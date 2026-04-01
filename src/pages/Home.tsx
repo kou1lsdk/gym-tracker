@@ -28,6 +28,20 @@ export function Home() {
           </p>
         </div>
 
+        {/* Weight prompt for new users */}
+        {!latestWeight && history.length > 0 && (
+          <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4">
+            <p className="text-sm text-emerald-300 font-medium">Запиши свою вагу тіла!</p>
+            <p className="text-xs text-emerald-200/60 mt-1">Щоб відстежувати прогрес набору маси</p>
+            <button
+              onClick={() => navigate('/progress')}
+              className="mt-3 w-full py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium active:bg-emerald-700"
+            >
+              Записати вагу
+            </button>
+          </div>
+        )}
+
         {/* Stats row */}
         <div className="grid grid-cols-3 gap-3">
           <StatCard
@@ -39,7 +53,7 @@ export function Home() {
           <StatCard
             icon={<Dumbbell size={18} className="text-indigo-400" />}
             value={String(history.length)}
-            label={uk.home.lastWorkout}
+            label="Тренувань"
           />
           <StatCard
             icon={<Flame size={18} className="text-orange-400" />}
@@ -72,8 +86,10 @@ export function Home() {
               </button>
             </div>
           ) : (
-            <div className="p-6 text-center">
+            <div className="p-6 text-center space-y-2">
+              <p className="text-2xl">😴</p>
               <p className="text-slate-400">{uk.home.restDay}</p>
+              <p className="text-xs text-slate-600">Відпочинок — це коли мʼязи ростуть</p>
             </div>
           )}
         </div>

@@ -2,23 +2,63 @@ import { useState, useEffect } from 'react'
 import { Check } from 'lucide-react'
 import { NumberStepper } from '../ui/NumberStepper'
 
+const DEFAULT_WEIGHTS: Record<string, number> = {
+  bench_press: 40,
+  incline_db_press: 24,
+  seated_db_press: 16,
+  lateral_raises: 8,
+  tricep_pushdowns: 25,
+  pullups: 0,
+  barbell_row: 40,
+  single_arm_row: 18,
+  face_pulls: 15,
+  bicep_curls: 12,
+  squat: 50,
+  romanian_deadlift: 40,
+  leg_press: 80,
+  leg_curls: 30,
+  calf_raises: 40,
+}
+
+function parseTargetMid(target: string): number {
+  const parts = target.split('-').map(Number)
+  if (parts.length === 2) return Math.round((parts[0] + parts[1]) / 2)
+  return parts[0] || 0
+}
+
 interface Props {
   setNumber: number
+  exerciseId: string
   targetReps: string
   lastWeight?: number
   lastReps?: number
+  previousSetWeight?: number
+  previousSetReps?: number
   completed: boolean
+  completedWeight?: number
+  completedReps?: number
   onComplete: (weight: number, reps: number) => void
 }
 
-export function SetRow({ setNumber, targetReps, lastWeight, lastReps, completed, onComplete }: Props) {
-  const [weight, setWeight] = useState(lastWeight ?? 20)
-  const [reps, setReps] = useState(lastReps ?? 0)
+export function SetRow({
+  setNumber, exerciseId, targetReps,
+  lastWeight, lastReps,
+  previousSetWeight, previousSetReps,
+  completed, completedWeight, completedReps,
+  onComplete,
+}: Props) {
+  const defaultWeight = previousSetWeight ?? lastWeight ?? DEFAULT_WEIGHTS[exerciseId] ?? 20
+  const defaultReps = previousSetReps ?? lastReps ?? parseTargetMid(targetReps)
+
+  const [weight, setWeight] = useState(defaultWeight)
+  const [reps, setReps] = useState(defaultReps)
 
   useEffect(() => {
-    if (lastWeight !== undefined) setWeight(lastWeight)
-    if (lastReps !== undefined) setReps(lastReps)
-  }, [lastWeight, lastReps])
+    if (!completed) {
+      setWeight(previousSetWeight ?? lastWeight ?? DEFAULT_WEIGHTS[exerciseId] ?? 20)
+      setReps(previousSetReps ?? lastReps ?? parseTargetMid(targetReps))
+    }
+  }, [previousSetWeight, previousSetReps, lastWeight, lastReps, exerciseId, targetReps, completed])
 
   if (completed) {
     return (
@@ -27,7 +67,7 @@ export function SetRow({ setNumber, targetReps, lastWeight, lastReps, completed,
           <Check size={16} className="text-emerald-400" />
         </div>
         <span className="text-sm text-slate-400">Підхід {setNumber}</span>
-        <span className="ml-auto text-sm font-medium">{weight} кг × {reps}</span>
+        <span className="ml-auto text-sm font-medium">{completedWeight ?? weight} кг × {completedReps ?? reps}</span>
       </div>
     )
   }

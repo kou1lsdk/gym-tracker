@@ -54,19 +54,26 @@ export function Workout() {
   // Summary screen
   if (showSummary) {
     const totalVolume = sets.reduce((sum, s) => sum + (s.weightKg ?? 0) * (s.actualReps ?? 0), 0)
+    const durationMin = activeWorkout.startedAt
+      ? Math.round((Date.now() - new Date(activeWorkout.startedAt).getTime()) / 60000)
+      : 0
     return (
       <PageWrapper>
         <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-6">
           <div className="text-6xl">🔥</div>
           <h1 className="text-2xl font-bold text-white">{uk.workout.great}</h1>
-          <div className="grid grid-cols-2 gap-4 w-full max-w-xs">
+          <div className="grid grid-cols-3 gap-3 w-full max-w-sm">
             <div className="bg-slate-800 rounded-xl p-4">
               <p className="text-2xl font-bold text-indigo-400">{sets.length}</p>
               <p className="text-xs text-slate-400">{uk.workout.totalSets}</p>
             </div>
             <div className="bg-slate-800 rounded-xl p-4">
               <p className="text-2xl font-bold text-emerald-400">{Math.round(totalVolume)}</p>
-              <p className="text-xs text-slate-400">{uk.workout.totalVolume} (кг)</p>
+              <p className="text-xs text-slate-400">Обʼєм (кг)</p>
+            </div>
+            <div className="bg-slate-800 rounded-xl p-4">
+              <p className="text-2xl font-bold text-amber-400">{durationMin}</p>
+              <p className="text-xs text-slate-400">Хвилин</p>
             </div>
           </div>
           <button
@@ -183,14 +190,18 @@ export function Workout() {
         <div className="space-y-2">
           {Array.from({ length: exercise.sets }).map((_, i) => {
             const setLog = exerciseSets.find((s) => s.setNumber === i + 1)
+            const prevSetLog = i > 0 ? exerciseSets.find((s) => s.setNumber === i) : undefined
             return (
               <SetRow
-                key={i}
+                key={`${exercise.id}-${i}`}
                 setNumber={i + 1}
+                exerciseId={exercise.id}
                 targetReps={`${exercise.repsMin}-${exercise.repsMax}`}
-                lastWeight={setLog?.weightKg}
-                lastReps={setLog?.actualReps}
+                previousSetWeight={prevSetLog?.weightKg}
+                previousSetReps={prevSetLog?.actualReps}
                 completed={!!setLog}
+                completedWeight={setLog?.weightKg}
+                completedReps={setLog?.actualReps}
                 onComplete={(w, r) => handleSetComplete(w, r)}
               />
             )

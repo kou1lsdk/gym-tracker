@@ -1,6 +1,31 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAppStore } from '../store/appStore'
 
+function playBeep() {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+    osc.frequency.value = 880
+    gain.gain.setValueAtTime(0.3, ctx.currentTime)
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15)
+    osc.start(ctx.currentTime)
+    osc.stop(ctx.currentTime + 0.15)
+    // Second beep
+    const osc2 = ctx.createOscillator()
+    const gain2 = ctx.createGain()
+    osc2.connect(gain2)
+    gain2.connect(ctx.destination)
+    osc2.frequency.value = 1100
+    gain2.gain.setValueAtTime(0.3, ctx.currentTime + 0.2)
+    gain2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35)
+    osc2.start(ctx.currentTime + 0.2)
+    osc2.stop(ctx.currentTime + 0.35)
+  } catch {}
+}
+
 export function useRestTimer() {
   const restTimerEnd = useAppStore((s) => s.activeWorkout.restTimerEnd)
   const clearRestTimer = useAppStore((s) => s.clearRestTimer)
@@ -19,7 +44,8 @@ export function useRestTimer() {
       setSecondsLeft(remaining)
       if (remaining <= 0) {
         clearRestTimer()
-        try { navigator.vibrate?.(300) } catch {}
+        try { navigator.vibrate?.([200, 100, 200]) } catch {}
+        playBeep()
       }
     }
 
