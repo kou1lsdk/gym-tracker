@@ -3,8 +3,12 @@ import { db } from '../db/database'
 import type { UserProfile } from '../types/workout'
 
 export function useProfile() {
-  const profile = useLiveQuery(() => db.userProfile.get(1))
-  const isLoading = profile === undefined
+  const result = useLiveQuery(async () => {
+    const p = await db.userProfile.get(1)
+    return p ?? null // null = not found, undefined = still loading
+  })
+  const isLoading = result === undefined
+  const profile = result ?? null
 
   async function saveProfile(data: Omit<UserProfile, 'id' | 'createdAt' | 'updatedAt'>) {
     const now = new Date().toISOString()
