@@ -35,18 +35,25 @@ export function Nutrition() {
   )
 
   const handleLog = async () => {
-    await db.nutritionLogs.add({
-      date: todayISO(),
-      calories: parseFloat(calories) || 0,
-      proteinG: parseFloat(protein) || 0,
-      carbsG: parseFloat(carbs) || 0,
-      fatG: parseFloat(fat) || 0,
-    })
-    setCalories('')
-    setProtein('')
-    setCarbs('')
-    setFat('')
-    setShowForm(false)
+    const cal = parseFloat(calories) || 0
+    if (cal <= 0 && !(parseFloat(protein) > 0)) return
+    try {
+      await db.nutritionLogs.add({
+        date: todayISO(),
+        calories: cal,
+        proteinG: parseFloat(protein) || 0,
+        carbsG: parseFloat(carbs) || 0,
+        fatG: parseFloat(fat) || 0,
+      })
+      try { navigator.vibrate?.(50) } catch {}
+      setCalories('')
+      setProtein('')
+      setCarbs('')
+      setFat('')
+      setShowForm(false)
+    } catch {
+      alert('Помилка збереження. Спробуйте ще раз.')
+    }
   }
 
   return (

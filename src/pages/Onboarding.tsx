@@ -80,7 +80,13 @@ export function Onboarding() {
                 <input type="number" inputMode="decimal" value={weightKg} onChange={(e) => setWeightKg(+e.target.value)} className="input-field" />
               </Field>
             </div>
-            <button onClick={() => setStep(1)} className="btn-primary w-full">{uk.common.next}</button>
+            <button
+              onClick={() => setStep(1)}
+              disabled={!name.trim() || age < 10 || age > 100 || heightCm < 100 || heightCm > 250 || weightKg < 30 || weightKg > 300}
+              className="btn-primary w-full disabled:opacity-40"
+            >
+              {uk.common.next}
+            </button>
           </div>
         )}
 
@@ -124,7 +130,13 @@ export function Onboarding() {
 
             <div className="flex gap-3">
               <button onClick={() => setStep(0)} className="btn-secondary flex-1">{uk.common.back}</button>
-              <button onClick={handleSubmit} className="btn-primary flex-1">{uk.onboarding.start}</button>
+              <button
+                onClick={handleSubmit}
+                disabled={trainingDays.length === 0}
+                className="btn-primary flex-1 disabled:opacity-40"
+              >
+                {uk.onboarding.start}
+              </button>
             </div>
 
             <p className="text-xs text-center text-slate-500 mt-4">{uk.onboarding.addToHomeScreen}</p>

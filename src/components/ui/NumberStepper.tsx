@@ -12,7 +12,7 @@ interface Props {
 
 export function NumberStepper({ value, onChange, step = 1, min = 0, max = 999, label, inputMode = 'numeric' }: Props) {
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-1.5">
       {label && <span className="text-xs text-slate-400 w-8">{label}</span>}
       <button
         type="button"

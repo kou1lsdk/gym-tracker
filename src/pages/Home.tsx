@@ -79,15 +79,22 @@ export function Home() {
         </div>
 
         {/* Recent history */}
-        {history.length > 0 && (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <h2 className="font-semibold text-white">{uk.history.title}</h2>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold text-white">{uk.history.title}</h2>
+            {history.length > 0 && (
               <button onClick={() => navigate('/progress')} className="text-xs text-indigo-400 flex items-center gap-1">
                 Все <ChevronRight size={14} />
               </button>
+            )}
+          </div>
+          {history.length === 0 ? (
+            <div className="py-6 text-center bg-slate-800/30 rounded-xl">
+              <p className="text-slate-500 text-sm">Ще немає тренувань</p>
+              <p className="text-slate-600 text-xs mt-1">Почни перше тренування і побачиш прогрес тут!</p>
             </div>
-            {history.slice(0, 3).map((w) => (
+          ) : (
+            history.slice(0, 3).map((w) => (
               <div key={w.id} className="flex items-center justify-between py-2.5 px-3 bg-slate-800/30 rounded-xl">
                 <div>
                   <p className="text-sm font-medium text-slate-300">
@@ -99,9 +106,9 @@ export function Home() {
                   <span className="text-xs text-emerald-400">✓</span>
                 )}
               </div>
-            ))}
-          </div>
-        )}
+            ))
+          )}
+        </div>
       </div>
     </PageWrapper>
   )

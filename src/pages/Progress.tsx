@@ -78,7 +78,7 @@ export function Progress() {
             </div>
           )}
 
-          {weightChartData.length > 1 ? (
+          {weightChartData.length >= 1 ? (
             <div className="bg-slate-800/50 rounded-xl border border-slate-700 p-3 h-48">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={weightChartData}>
@@ -118,7 +118,7 @@ export function Progress() {
             ))}
           </div>
 
-          {exerciseChartData.length > 1 ? (
+          {exerciseChartData.length >= 1 ? (
             <div className="bg-slate-800/50 rounded-xl border border-slate-700 p-3 h-48">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={exerciseChartData}>

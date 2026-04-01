@@ -43,7 +43,10 @@ export function SetRow({ setNumber, targetReps, lastWeight, lastReps, completed,
         <NumberStepper value={reps} onChange={setReps} step={1} label="повт" />
       </div>
       <button
-        onClick={() => onComplete(weight, reps)}
+        onClick={() => {
+          try { navigator.vibrate?.(50) } catch {}
+          onComplete(weight, reps)
+        }}
         disabled={reps === 0}
         className="w-full py-2.5 rounded-xl bg-indigo-600 text-white font-medium active:bg-indigo-700 disabled:opacity-40 disabled:active:bg-indigo-600 transition-colors"
       >

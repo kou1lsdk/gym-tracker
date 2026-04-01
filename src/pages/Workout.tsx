@@ -73,7 +73,7 @@ export function Workout() {
             onClick={() => { setShowSummary(false); navigate('/') }}
             className="px-8 py-3 rounded-xl bg-indigo-600 text-white font-semibold"
           >
-            На головн��
+            На головну
           </button>
         </div>
       </PageWrapper>
@@ -230,7 +230,9 @@ export function Workout() {
 
         {!allExercisesDone && sets.length > 0 && (
           <button
-            onClick={handleFinish}
+            onClick={() => {
+              if (confirm('Завершити тренування достроково?')) handleFinish()
+            }}
             className="w-full py-3 rounded-xl bg-slate-800 text-slate-400 text-sm font-medium active:bg-slate-700 transition-colors"
           >
             Завершити достроково

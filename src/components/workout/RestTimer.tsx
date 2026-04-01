@@ -4,11 +4,13 @@ import { formatTimer } from '../../utils/dateUtils'
 
 export function RestTimer() {
   const { secondsLeft, isRunning } = useRestTimer()
+  const totalSeconds = useAppStore((s) => s.activeWorkout.restTimerTotal)
   const clearRestTimer = useAppStore((s) => s.clearRestTimer)
 
   if (!isRunning) return null
 
-  const progress = secondsLeft > 0 ? 1 : 0 // simplified
+  const progress = totalSeconds > 0 ? secondsLeft / totalSeconds : 0
+  const circumference = 2 * Math.PI * 45 // r=45
 
   return (
     <div className="fixed inset-0 bg-slate-900/95 z-50 flex flex-col items-center justify-center gap-6">
@@ -19,9 +21,10 @@ export function RestTimer() {
           <circle
             cx="50" cy="50" r="45"
             fill="none" stroke="#6366f1" strokeWidth="6"
-            strokeDasharray={`${progress * 283} 283`}
+            strokeDasharray={circumference}
+            strokeDashoffset={circumference * (1 - progress)}
             strokeLinecap="round"
-            className="transition-all duration-250"
+            className="transition-[stroke-dashoffset] duration-300 ease-linear"
           />
         </svg>
         <span className="text-5xl font-bold text-white tabular-nums">
