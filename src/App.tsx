@@ -4,7 +4,6 @@ import { useProfile } from './hooks/useProfile'
 import { Home } from './pages/Home'
 import { Workout } from './pages/Workout'
 import { Progress } from './pages/Progress'
-import { Nutrition } from './pages/Nutrition'
 import { Settings } from './pages/Settings'
 import { Onboarding } from './pages/Onboarding'
 
@@ -13,18 +12,16 @@ function AppRoutes() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-black">
         <div className="text-center space-y-3">
-          <div className="text-4xl">🏋️</div>
-          <p className="text-slate-400 text-sm">Завантажен��я...</p>
+          <pre className="text-white text-sm leading-tight font-mono">{'   ╭───╮\n  ( •ᴗ• )\n   ╰─┬─╯'}</pre>
+          <p className="text-[#636366] text-sm">Завантаження...</p>
         </div>
       </div>
     )
   }
 
-  if (!profile) {
-    return <Onboarding />
-  }
+  if (!profile) return <Onboarding />
 
   return (
     <>
@@ -32,7 +29,6 @@ function AppRoutes() {
         <Route path="/" element={<Home />} />
         <Route path="/workout" element={<Workout />} />
         <Route path="/progress" element={<Progress />} />
-        <Route path="/nutrition" element={<Nutrition />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

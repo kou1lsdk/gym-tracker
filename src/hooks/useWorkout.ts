@@ -3,6 +3,7 @@ import { db } from '../db/database'
 import { PPL_BEGINNER } from '../data/programs/ppl-beginner'
 import { useAppStore } from '../store/appStore'
 import { todayISO, nowISO, getTrainingDayIndex } from '../utils/dateUtils'
+import type { RPE } from '../types/workout'
 
 export function useTodayWorkout(trainingDays: number[]) {
   const dayIndex = getTrainingDayIndex(trainingDays)
@@ -25,14 +26,13 @@ export function useWorkoutActions() {
     return id as number
   }
 
-  async function logSet(workoutLogId: number, exerciseId: string, setNumber: number, targetReps: number, actualReps: number, weightKg: number) {
+  async function logSet(
+    workoutLogId: number, exerciseId: string, setNumber: number,
+    targetReps: number, actualReps: number, weightKg: number, rpe?: RPE,
+  ) {
     await db.setLogs.add({
-      workoutLogId,
-      exerciseId,
-      setNumber,
-      targetReps,
-      actualReps,
-      weightKg,
+      workoutLogId, exerciseId, setNumber, targetReps,
+      actualReps, weightKg, rpe,
       completed: true,
       timestamp: nowISO(),
     })
@@ -59,29 +59,9 @@ export function useWorkoutSets(workoutLogId: number | null) {
   ) ?? []
 }
 
-export function useLastSets(exerciseId: string) {
-  return useLiveQuery(async () => {
-    const sets = await db.setLogs
-      .where('exerciseId')
-      .equals(exerciseId)
-      .reverse()
-      .limit(10)
-      .toArray()
-    // Group by workoutLogId and return the most recent workout's sets
-    if (sets.length === 0) return []
-    const lastWorkoutId = sets[0].workoutLogId
-    return sets.filter(s => s.workoutLogId === lastWorkoutId).reverse()
-  }, [exerciseId]) ?? []
-}
-
 export function useExerciseProgress(exerciseId: string) {
   return useLiveQuery(async () => {
-    const sets = await db.setLogs
-      .where('exerciseId')
-      .equals(exerciseId)
-      .toArray()
-
-    // Group by workout, find max weight per workout
+    const sets = await db.setLogs.where('exerciseId').equals(exerciseId).toArray()
     const byWorkout = new Map<number, { maxWeight: number; date: string }>()
     for (const s of sets) {
       if (!s.weightKg) continue
@@ -90,7 +70,6 @@ export function useExerciseProgress(exerciseId: string) {
         byWorkout.set(s.workoutLogId, { maxWeight: s.weightKg, date: s.timestamp.slice(0, 10) })
       }
     }
-
     return Array.from(byWorkout.values()).sort((a, b) => a.date.localeCompare(b.date))
   }, [exerciseId]) ?? []
 }

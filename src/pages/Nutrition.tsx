@@ -4,9 +4,7 @@ import { useProfile } from '../hooks/useProfile'
 import { useNutritionToday } from '../hooks/useStats'
 import { calcBMR, calcTDEE, calcBulkCalories, calcMacros } from '../utils/tdee'
 import { todayISO } from '../utils/dateUtils'
-import { uk } from '../locale/uk'
 import { db } from '../db/database'
-import { Beef, Wheat, Droplets } from 'lucide-react'
 
 export function Nutrition() {
   const { profile } = useProfile()
@@ -17,129 +15,92 @@ export function Nutrition() {
   const [carbs, setCarbs] = useState('')
   const [fat, setFat] = useState('')
 
-  if (!profile) return <PageWrapper title={uk.nutrition.title}><p className="text-slate-400">Спочатку заповни профіль</p></PageWrapper>
+  if (!profile) return <PageWrapper title="Їжа"><p className="text-[#636366]">Спочатку заповни профіль</p></PageWrapper>
 
   const bmr = calcBMR(profile.weightKg, profile.heightCm, profile.age, profile.sex)
   const tdee = calcTDEE(bmr, profile.activityLevel)
   const bulkCal = calcBulkCalories(tdee)
   const macros = calcMacros(profile.weightKg, bulkCal)
 
-  const todayTotals = todayLogs.reduce(
-    (acc, log) => ({
-      calories: acc.calories + log.calories,
-      protein: acc.protein + log.proteinG,
-      carbs: acc.carbs + log.carbsG,
-      fat: acc.fat + log.fatG,
-    }),
+  const totals = todayLogs.reduce(
+    (acc, log) => ({ calories: acc.calories + log.calories, protein: acc.protein + log.proteinG, carbs: acc.carbs + log.carbsG, fat: acc.fat + log.fatG }),
     { calories: 0, protein: 0, carbs: 0, fat: 0 }
   )
 
   const handleLog = async () => {
     const cal = parseFloat(calories) || 0
-    if (cal <= 0 && !(parseFloat(protein) > 0)) return
+    if (cal <= 0) return
     try {
-      await db.nutritionLogs.add({
-        date: todayISO(),
-        calories: cal,
-        proteinG: parseFloat(protein) || 0,
-        carbsG: parseFloat(carbs) || 0,
-        fatG: parseFloat(fat) || 0,
-      })
-      try { navigator.vibrate?.(50) } catch {}
-      setCalories('')
-      setProtein('')
-      setCarbs('')
-      setFat('')
-      setShowForm(false)
-    } catch {
-      alert('Помилка збереження. Спробуйте ще раз.')
-    }
+      await db.nutritionLogs.add({ date: todayISO(), calories: cal, proteinG: parseFloat(protein) || 0, carbsG: parseFloat(carbs) || 0, fatG: parseFloat(fat) || 0 })
+      setCalories(''); setProtein(''); setCarbs(''); setFat(''); setShowForm(false)
+    } catch { alert('Помилка збереження') }
   }
 
   return (
-    <PageWrapper title={uk.nutrition.title}>
-      <div className="space-y-5">
-        {/* TDEE section */}
-        <div className="bg-slate-800/50 rounded-2xl border border-slate-700 p-4 space-y-3">
-          <h2 className="text-sm font-medium text-slate-400">{uk.nutrition.target} (набір маси)</h2>
-          <div className="text-center">
-            <p className="text-4xl font-bold text-white">{bulkCal}</p>
-            <p className="text-sm text-slate-400">{uk.nutrition.calories}/день</p>
-          </div>
-          <div className="text-xs text-slate-500 text-center">
-            BMR: {Math.round(bmr)} • TDEE: {tdee} • +400 профіцит
-          </div>
+    <PageWrapper title="Їжа">
+      <div className="space-y-4">
+        {/* TDEE target */}
+        <div className="bg-[#1C1C1E] rounded-2xl p-5 text-center">
+          <p className="text-xs text-[#8E8E93] mb-1">Ціль (набір маси)</p>
+          <p className="text-4xl font-bold text-white tabular-nums">{bulkCal}</p>
+          <p className="text-sm text-[#636366]">ккал/день</p>
         </div>
 
-        {/* Macro targets */}
+        {/* Macros */}
         <div className="grid grid-cols-3 gap-3">
-          <MacroCard icon={<Beef size={18} />} color="red" label={uk.nutrition.protein} value={macros.protein} unit="г" />
-          <MacroCard icon={<Wheat size={18} />} color="amber" label={uk.nutrition.carbs} value={macros.carbs} unit="г" />
-          <MacroCard icon={<Droplets size={18} />} color="blue" label={uk.nutrition.fat} value={macros.fat} unit="г" />
+          <MacroCard label="Білок" value={macros.protein} unit="г" color="#FF453A" />
+          <MacroCard label="Вуглеводи" value={macros.carbs} unit="г" color="#FF9F0A" />
+          <MacroCard label="Жири" value={macros.fat} unit="г" color="#0A84FF" />
         </div>
 
-        {/* Today's intake */}
-        <div className="bg-slate-800/50 rounded-2xl border border-slate-700 p-4 space-y-3">
+        {/* Today's progress */}
+        <div className="bg-[#1C1C1E] rounded-2xl p-4 space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="font-semibold text-white">{uk.nutrition.todayTotal}</h2>
-            <button
-              onClick={() => setShowForm(!showForm)}
-              className="text-xs px-3 py-1.5 rounded-lg bg-indigo-600 text-white"
-            >
+            <span className="text-sm font-semibold text-white">Сьогодні</span>
+            <button onClick={() => setShowForm(!showForm)} className="text-xs px-3 py-1.5 rounded-lg bg-white text-black font-medium">
               + Додати
             </button>
           </div>
 
-          <div className="grid grid-cols-4 gap-2 text-center">
-            <MiniStat label="ккал" value={todayTotals.calories} target={bulkCal} />
-            <MiniStat label="білок" value={todayTotals.protein} target={macros.protein} unit="г" />
-            <MiniStat label="вуг." value={todayTotals.carbs} target={macros.carbs} unit="г" />
-            <MiniStat label="жири" value={todayTotals.fat} target={macros.fat} unit="г" />
-          </div>
-
-          {/* Progress bar */}
           <div className="space-y-1">
-            <div className="flex justify-between text-xs text-slate-400">
-              <span>{todayTotals.calories} ккал</span>
+            <div className="flex justify-between text-xs text-[#8E8E93]">
+              <span>{totals.calories} ккал</span>
               <span>{bulkCal} ккал</span>
             </div>
-            <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-indigo-500 rounded-full transition-all"
-                style={{ width: `${Math.min(100, (todayTotals.calories / bulkCal) * 100)}%` }}
-              />
+            <div className="h-2 bg-[#38383A] rounded-full overflow-hidden">
+              <div className="h-full bg-[#30D158] rounded-full transition-all" style={{ width: `${Math.min(100, (totals.calories / bulkCal) * 100)}%` }} />
             </div>
+          </div>
+
+          <div className="grid grid-cols-4 gap-2 text-center">
+            <MiniStat label="ккал" value={totals.calories} target={bulkCal} />
+            <MiniStat label="білок" value={totals.protein} target={macros.protein} />
+            <MiniStat label="вуг." value={totals.carbs} target={macros.carbs} />
+            <MiniStat label="жири" value={totals.fat} target={macros.fat} />
           </div>
         </div>
 
-        {/* Log form */}
+        {/* Form */}
         {showForm && (
-          <div className="bg-slate-800 rounded-2xl border border-slate-700 p-4 space-y-3">
-            <h3 className="font-medium text-white text-sm">{uk.nutrition.log}</h3>
+          <div className="bg-[#1C1C1E] rounded-2xl p-4 space-y-3">
             <div className="grid grid-cols-2 gap-3">
-              <NutritionInput label="Калорії" value={calories} onChange={setCalories} placeholder="500" />
-              <NutritionInput label="Білок (г)" value={protein} onChange={setProtein} placeholder="30" />
-              <NutritionInput label="Вуглеводи (г)" value={carbs} onChange={setCarbs} placeholder="60" />
-              <NutritionInput label="Жири (г)" value={fat} onChange={setFat} placeholder="15" />
+              <NInput label="Калорії" value={calories} onChange={setCalories} placeholder="500" />
+              <NInput label="Білок (г)" value={protein} onChange={setProtein} placeholder="30" />
+              <NInput label="Вуглеводи (г)" value={carbs} onChange={setCarbs} placeholder="60" />
+              <NInput label="Жири (г)" value={fat} onChange={setFat} placeholder="15" />
             </div>
-            <button
-              onClick={handleLog}
-              className="w-full py-2.5 rounded-xl bg-indigo-600 text-white font-medium"
-            >
-              Записа��и
-            </button>
+            <button onClick={handleLog} className="w-full py-2.5 rounded-xl bg-white text-black font-medium text-sm">Записати</button>
           </div>
         )}
 
         {/* Tips */}
-        <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 space-y-2">
-          <h3 className="text-sm font-medium text-amber-300">💡 Поради для набору маси</h3>
-          <ul className="text-xs text-amber-200/70 space-y-1">
-            <li>• Їж кожні 3-4 години (4-5 прийомів їжі)</li>
-            <li>• Білок в кожному прийомі: м'ясо, риба, яйця, сир</li>
-            <li>• Складні вуглеводи: рис, гречка, вівсянка, картопля</li>
-            <li>• Не пропускай прийоми їжі — набирати масу = їсти достатньо</li>
-            <li>• Пий 2-3 літри води на день</li>
+        <div className="bg-[#1C1C1E] rounded-2xl p-4 space-y-2">
+          <p className="text-sm font-medium text-[#FF9F0A]">💡 Поради</p>
+          <ul className="text-xs text-[#8E8E93] space-y-1">
+            <li>• Білок в кожному прийомі: мʼясо, риба, яйця</li>
+            <li>• Складні вуглеводи: рис, гречка, вівсянка</li>
+            <li>• Їж кожні 3-4 години (4-5 прийомів)</li>
+            <li>• 2-3 літри води на день</li>
           </ul>
         </div>
       </div>
@@ -147,44 +108,31 @@ export function Nutrition() {
   )
 }
 
-function MacroCard({ icon, color, label, value, unit }: { icon: React.ReactNode; color: string; label: string; value: number; unit: string }) {
-  const colorMap: Record<string, string> = {
-    red: 'text-red-400 bg-red-500/10 border-red-500/20',
-    amber: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
-    blue: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
-  }
-  const cls = colorMap[color] ?? ''
+function MacroCard({ label, value, unit, color }: { label: string; value: number; unit: string; color: string }) {
   return (
-    <div className={`rounded-xl border p-3 text-center ${cls}`}>
-      <div className="flex justify-center mb-1">{icon}</div>
-      <p className="text-lg font-bold text-white">{value}<span className="text-xs ml-0.5">{unit}</span></p>
-      <p className="text-[10px] opacity-70">{label}</p>
+    <div className="bg-[#1C1C1E] rounded-2xl p-3 text-center">
+      <p className="text-lg font-bold text-white">{value}<span className="text-xs text-[#636366] ml-0.5">{unit}</span></p>
+      <p className="text-[10px]" style={{ color }}>{label}</p>
     </div>
   )
 }
 
-function MiniStat({ label, value, target, unit }: { label: string; value: number; target: number; unit?: string }) {
+function MiniStat({ label, value, target }: { label: string; value: number; target: number }) {
   const pct = target > 0 ? Math.round((value / target) * 100) : 0
   return (
     <div>
-      <p className="text-sm font-bold text-white">{Math.round(value)}{unit && <span className="text-[10px]">{unit}</span>}</p>
-      <p className="text-[10px] text-slate-500">{pct}% • {label}</p>
+      <p className="text-sm font-bold text-white tabular-nums">{Math.round(value)}</p>
+      <p className="text-[10px] text-[#636366]">{pct}% {label}</p>
     </div>
   )
 }
 
-function NutritionInput({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (v: string) => void; placeholder: string }) {
+function NInput({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (v: string) => void; placeholder: string }) {
   return (
     <div>
-      <label className="text-xs text-slate-400 mb-1 block">{label}</label>
-      <input
-        type="number"
-        inputMode="numeric"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-600 text-white text-sm focus:border-indigo-500 focus:outline-none"
-      />
+      <label className="text-xs text-[#636366] mb-1 block">{label}</label>
+      <input type="number" inputMode="numeric" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
+        className="w-full px-3 py-2 rounded-xl bg-[#2C2C2E] border border-[#38383A] text-white text-sm focus:border-[#636366] focus:outline-none" />
     </div>
   )
 }

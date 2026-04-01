@@ -1,11 +1,10 @@
 import { useRef } from 'react'
-import { Download, Upload, Calendar, Info, Database } from 'lucide-react'
+import { Download, Upload, Calendar, Info } from 'lucide-react'
 import { PageWrapper } from '../components/layout/PageWrapper'
 import { useProfile } from '../hooks/useProfile'
-import { exportData, importData, downloadJson } from '../db/backup'
+import { exportData, importData, downloadJson, getLastBackupDate } from '../db/backup'
 import { generateICS, downloadICS } from '../utils/icsGenerator'
 import { PPL_BEGINNER } from '../data/programs/ppl-beginner'
-import { uk } from '../locale/uk'
 
 export function Settings() {
   const { profile } = useProfile()
@@ -13,105 +12,78 @@ export function Settings() {
 
   const handleExport = async () => {
     const json = await exportData()
-    const date = new Date().toISOString().slice(0, 10)
-    downloadJson(json, `gymtracker-backup-${date}.json`)
+    downloadJson(json, `gymtracker-backup-${new Date().toISOString().slice(0, 10)}.json`)
   }
 
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
     try {
-      const text = await file.text()
-      await importData(text)
-      alert('Дані успішно імпортовано!')
-    } catch (err) {
-      alert('Помилка імпорту: ' + (err as Error).message)
-    }
+      await importData(await file.text())
+      alert('Дані відновлено!')
+    } catch (err) { alert('Помилка: ' + (err as Error).message) }
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
-  const handleCalendarExport = () => {
+  const handleCalendar = () => {
     if (!profile) return
-    const dayNames = PPL_BEGINNER.days.map((d) => d.shortName)
-    const ics = generateICS(profile.trainingDays, profile.notificationTime, dayNames)
-    downloadICS(ics)
+    downloadICS(generateICS(profile.trainingDays, profile.notificationTime, PPL_BEGINNER.days.map(d => d.shortName)))
   }
 
+  const lastBackup = getLastBackupDate()
+
   return (
-    <PageWrapper title={uk.settings.title}>
+    <PageWrapper title="Налаштування">
       <div className="space-y-4">
-        {/* Profile summary */}
+        {/* Profile */}
         {profile && (
-          <div className="bg-slate-800/50 rounded-2xl border border-slate-700 p-4">
-            <h2 className="font-semibold text-white mb-3">{uk.settings.profile}</h2>
-            <div className="grid grid-cols-2 gap-y-2 text-sm">
-              <span className="text-slate-400">Ім'я</span>
-              <span className="text-white">{profile.name}</span>
-              <span className="text-slate-400">Вік</span>
-              <span className="text-white">{profile.age} років</span>
-              <span className="text-slate-400">Зріст</span>
-              <span className="text-white">{profile.heightCm} см</span>
-              <span className="text-slate-400">Вага</span>
-              <span className="text-white">{profile.weightKg} кг</span>
-              <span className="text-slate-400">Дні тренувань</span>
-              <span className="text-white">
-                {profile.trainingDays.map((d) => uk.days[d]).join(', ')}
-              </span>
-            </div>
+          <div className="bg-[#1C1C1E] rounded-2xl p-4 space-y-2">
+            <p className="text-sm font-semibold text-white mb-2">Профіль</p>
+            <Row label="Імʼя" value={profile.name} />
+            <Row label="Вік" value={`${profile.age}`} />
+            <Row label="Зріст" value={`${profile.heightCm} см`} />
+            <Row label="Вага" value={`${profile.weightKg} кг`} />
           </div>
         )}
 
-        {/* Actions */}
+        {/* Data */}
         <div className="space-y-2">
-          <h2 className="font-semibold text-white">{uk.settings.backup}</h2>
+          <p className="text-sm font-semibold text-white">Дані</p>
 
-          <button
-            onClick={handleExport}
-            className="w-full flex items-center gap-3 px-4 py-3.5 bg-slate-800/50 rounded-xl border border-slate-700 active:bg-slate-700 transition-colors"
-          >
-            <Download size={20} className="text-emerald-400" />
-            <div className="text-left">
-              <p className="text-sm font-medium text-white">{uk.settings.export}</p>
-              <p className="text-xs text-slate-500">Завантажити JSON файл з усіма даними</p>
-            </div>
-          </button>
+          <ActionButton icon={<Download size={18} className="text-[#30D158]" />} title="Експорт" desc={lastBackup ? `Останній: ${new Date(lastBackup).toLocaleDateString('uk-UA')}` : 'Завантажити JSON бекап'} onClick={handleExport} />
+          <ActionButton icon={<Upload size={18} className="text-[#0A84FF]" />} title="Імпорт" desc="Відновити з файлу" onClick={() => fileInputRef.current?.click()} />
+          <ActionButton icon={<Calendar size={18} className="text-[#FF9F0A]" />} title="Календар" desc="Додати розклад в Apple Calendar" onClick={handleCalendar} />
 
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="w-full flex items-center gap-3 px-4 py-3.5 bg-slate-800/50 rounded-xl border border-slate-700 active:bg-slate-700 transition-colors"
-          >
-            <Upload size={20} className="text-blue-400" />
-            <div className="text-left">
-              <p className="text-sm font-medium text-white">{uk.settings.import}</p>
-              <p className="text-xs text-slate-500">Відновити з резервної копії</p>
-            </div>
-          </button>
           <input ref={fileInputRef} type="file" accept=".json" onChange={handleImport} className="hidden" />
-
-          <button
-            onClick={handleCalendarExport}
-            className="w-full flex items-center gap-3 px-4 py-3.5 bg-slate-800/50 rounded-xl border border-slate-700 active:bg-slate-700 transition-colors"
-          >
-            <Calendar size={20} className="text-indigo-400" />
-            <div className="text-left">
-              <p className="text-sm font-medium text-white">{uk.settings.calendar}</p>
-              <p className="text-xs text-slate-500">{uk.settings.calendarDesc}</p>
-            </div>
-          </button>
         </div>
 
         {/* Info */}
-        <div className="bg-slate-800/30 rounded-xl p-4 space-y-2">
-          <div className="flex items-center gap-2 text-slate-400">
-            <Database size={16} />
-            <span className="text-xs">{uk.settings.dataInfo}</span>
-          </div>
-          <div className="flex items-center gap-2 text-slate-400">
-            <Info size={16} />
-            <span className="text-xs">{uk.settings.version} 1.0.0</span>
-          </div>
+        <div className="flex items-center gap-2 px-4 py-3 text-[#636366]">
+          <Info size={14} />
+          <span className="text-xs">v2.0 • Дані зберігаються локально + авто-бекап</span>
         </div>
       </div>
     </PageWrapper>
+  )
+}
+
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between text-sm">
+      <span className="text-[#8E8E93]">{label}</span>
+      <span className="text-white">{value}</span>
+    </div>
+  )
+}
+
+function ActionButton({ icon, title, desc, onClick }: { icon: React.ReactNode; title: string; desc: string; onClick: () => void }) {
+  return (
+    <button onClick={onClick} className="w-full flex items-center gap-3 px-4 py-3.5 bg-[#1C1C1E] rounded-2xl active:bg-[#2C2C2E] transition-colors text-left">
+      {icon}
+      <div>
+        <p className="text-sm font-medium text-white">{title}</p>
+        <p className="text-xs text-[#636366]">{desc}</p>
+      </div>
+    </button>
   )
 }

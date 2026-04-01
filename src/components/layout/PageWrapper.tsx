@@ -8,9 +8,9 @@ interface Props {
 
 export function PageWrapper({ children, title, noPadding }: Props) {
   return (
-    <div className={`min-h-screen pb-20 ${noPadding ? '' : 'px-4 pt-4'}`}>
+    <div className={`min-h-screen pb-16 ${noPadding ? '' : 'px-4 pt-2'}`}>
       {title && (
-        <h1 className={`text-xl font-bold text-white mb-4 ${noPadding ? 'px-4 pt-4' : ''}`}>
+        <h1 className={`text-[28px] font-bold text-white mb-5 tracking-tight ${noPadding ? 'px-4 pt-2' : ''}`}>
           {title}
         </h1>
       )}

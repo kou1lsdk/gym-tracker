@@ -1,15 +1,10 @@
 import { useState } from 'react'
 import { useProfile } from '../hooks/useProfile'
-import { uk } from '../locale/uk'
 import { ACTIVITY_LEVELS } from '../utils/tdee'
 
 const WEEK_DAYS = [
-  { value: 1, label: 'Пн' },
-  { value: 2, label: 'Вт' },
-  { value: 3, label: 'Ср' },
-  { value: 4, label: 'Чт' },
-  { value: 5, label: 'Пт' },
-  { value: 6, label: '��б' },
+  { value: 1, label: 'Пн' }, { value: 2, label: 'Вт' }, { value: 3, label: 'Ср' },
+  { value: 4, label: 'Чт' }, { value: 5, label: 'Пт' }, { value: 6, label: 'Сб' },
   { value: 0, label: 'Нд' },
 ]
 
@@ -24,23 +19,14 @@ export function Onboarding() {
   const [activityLevel, setActivityLevel] = useState(1.375)
   const [trainingDays, setTrainingDays] = useState<number[]>([1, 3, 5])
 
-  const toggleDay = (d: number) => {
-    setTrainingDays((prev) =>
-      prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d].sort()
-    )
-  }
+  const toggleDay = (d: number) => setTrainingDays(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d].sort())
+
+  const canProceed = name.trim().length > 0 && age >= 10 && age <= 100 && heightCm >= 100 && weightKg >= 30
 
   const handleSubmit = async () => {
     await saveProfile({
-      name: name || 'Атлет',
-      heightCm,
-      weightKg,
-      age,
-      sex,
-      activityLevel,
-      goal: 'bulk',
-      trainingDays,
-      notificationTime: '09:00',
+      name: name || 'Атлет', heightCm, weightKg, age, sex, activityLevel,
+      goal: 'bulk', trainingDays, notificationTime: '09:00',
     })
   }
 
@@ -48,169 +34,97 @@ export function Onboarding() {
     <div className="min-h-screen flex flex-col items-center justify-center px-6 py-10">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center space-y-2">
-          <div className="text-5xl mb-2">🏋️</div>
-          <h1 className="text-2xl font-bold text-white">{uk.onboarding.welcome}</h1>
-          <p className="text-slate-400 text-sm">{uk.onboarding.subtitle}</p>
+          <pre className="text-white text-sm leading-tight font-mono">{'   ╭───╮\n  ( •ᴗ• )\n   ╰─┬─╯\n     │\n    ╱ ╲'}</pre>
+          <h1 className="text-2xl font-bold text-white">Ласкаво просимо!</h1>
+          <p className="text-sm text-[#8E8E93]">Налаштуй профіль для персоналізованої програми</p>
         </div>
 
         {step === 0 && (
-          <div className="space-y-4 animate-in">
-            <Field label={uk.onboarding.name}>
-              <input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Твоє ім'я"
-                className="input-field"
-              />
+          <div className="space-y-4">
+            <Field label="Імʼя">
+              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Твоє ім'я"
+                className="w-full px-4 py-3 rounded-xl bg-[#1C1C1E] border border-[#38383A] text-white text-sm focus:border-[#636366] focus:outline-none" />
             </Field>
-            <Field label={uk.onboarding.sex}>
+            <Field label="Стать">
               <div className="flex gap-3">
-                <SexButton active={sex === 'male'} onClick={() => setSex('male')} label={uk.onboarding.male} />
-                <SexButton active={sex === 'female'} onClick={() => setSex('female')} label={uk.onboarding.female} />
+                <Toggle active={sex === 'male'} onClick={() => setSex('male')} label="Чоловік" />
+                <Toggle active={sex === 'female'} onClick={() => setSex('female')} label="Жінка" />
               </div>
             </Field>
             <div className="grid grid-cols-3 gap-3">
-              <Field label={uk.onboarding.age}>
-                <input type="number" inputMode="numeric" value={age} onChange={(e) => setAge(+e.target.value)} className="input-field" />
+              <Field label="Вік">
+                <NumInput value={age} onChange={setAge} />
               </Field>
-              <Field label={uk.onboarding.height}>
-                <input type="number" inputMode="numeric" value={heightCm} onChange={(e) => setHeightCm(+e.target.value)} className="input-field" />
+              <Field label="Зріст (см)">
+                <NumInput value={heightCm} onChange={setHeightCm} />
               </Field>
-              <Field label={uk.onboarding.weight}>
-                <input type="number" inputMode="decimal" value={weightKg} onChange={(e) => setWeightKg(+e.target.value)} className="input-field" />
+              <Field label="Вага (кг)">
+                <NumInput value={weightKg} onChange={setWeightKg} mode="decimal" />
               </Field>
             </div>
-            <button
-              onClick={() => setStep(1)}
-              disabled={!name.trim() || age < 10 || age > 100 || heightCm < 100 || heightCm > 250 || weightKg < 30 || weightKg > 300}
-              className="btn-primary w-full disabled:opacity-40"
-            >
-              {uk.common.next}
+            <button onClick={() => setStep(1)} disabled={!canProceed}
+              className="w-full py-3 rounded-xl bg-white text-black font-semibold text-sm disabled:opacity-30">
+              Далі
             </button>
           </div>
         )}
 
         {step === 1 && (
-          <div className="space-y-4 animate-in">
-            <Field label={uk.onboarding.activity}>
+          <div className="space-y-4">
+            <Field label="Рівень активності">
               <div className="space-y-2">
                 {ACTIVITY_LEVELS.map((al) => (
-                  <button
-                    key={al.value}
-                    onClick={() => setActivityLevel(al.value)}
+                  <button key={al.value} onClick={() => setActivityLevel(al.value)}
                     className={`w-full text-left px-4 py-3 rounded-xl text-sm transition-colors ${
-                      activityLevel === al.value
-                        ? 'bg-indigo-600/20 border border-indigo-500 text-indigo-300'
-                        : 'bg-slate-800 border border-slate-700 text-slate-400'
-                    }`}
-                  >
+                      activityLevel === al.value ? 'bg-white text-black font-medium' : 'bg-[#1C1C1E] text-[#8E8E93] border border-[#38383A]'
+                    }`}>
                     {al.label}
                   </button>
                 ))}
               </div>
             </Field>
-
-            <Field label={uk.onboarding.trainingDays}>
+            <Field label="Дні тренувань">
               <div className="flex gap-2">
                 {WEEK_DAYS.map(({ value, label }) => (
-                  <button
-                    key={value}
-                    onClick={() => toggleDay(value)}
+                  <button key={value} onClick={() => toggleDay(value)}
                     className={`flex-1 py-3 rounded-xl text-sm font-medium transition-colors ${
-                      trainingDays.includes(value)
-                        ? 'bg-indigo-600 text-white'
-                        : 'bg-slate-800 text-slate-500'
-                    }`}
-                  >
+                      trainingDays.includes(value) ? 'bg-white text-black' : 'bg-[#1C1C1E] text-[#636366]'
+                    }`}>
                     {label}
                   </button>
                 ))}
               </div>
             </Field>
-
             <div className="flex gap-3">
-              <button onClick={() => setStep(0)} className="btn-secondary flex-1">{uk.common.back}</button>
-              <button
-                onClick={handleSubmit}
-                disabled={trainingDays.length === 0}
-                className="btn-primary flex-1 disabled:opacity-40"
-              >
-                {uk.onboarding.start}
+              <button onClick={() => setStep(0)} className="flex-1 py-3 rounded-xl bg-[#1C1C1E] text-[#8E8E93] font-medium text-sm">Назад</button>
+              <button onClick={handleSubmit} disabled={trainingDays.length === 0}
+                className="flex-1 py-3 rounded-xl bg-white text-black font-semibold text-sm disabled:opacity-30">
+                Почати
               </button>
             </div>
-
-            <p className="text-xs text-center text-slate-500 mt-4">{uk.onboarding.addToHomeScreen}</p>
+            <p className="text-xs text-center text-[#636366]">📱 Додай на головний екран для найкращого досвіду</p>
           </div>
         )}
       </div>
-
-      <style>{`
-        .input-field {
-          width: 100%;
-          padding: 0.75rem 1rem;
-          border-radius: 0.75rem;
-          background: rgb(30 41 59);
-          border: 1px solid rgb(51 65 85);
-          color: white;
-          font-size: 0.875rem;
-          outline: none;
-        }
-        .input-field:focus {
-          border-color: rgb(99 102 241);
-        }
-        .btn-primary {
-          padding: 0.75rem;
-          border-radius: 0.75rem;
-          background: rgb(79 70 229);
-          color: white;
-          font-weight: 600;
-          font-size: 0.875rem;
-          border: none;
-          cursor: pointer;
-        }
-        .btn-primary:active {
-          background: rgb(67 56 202);
-        }
-        .btn-secondary {
-          padding: 0.75rem;
-          border-radius: 0.75rem;
-          background: rgb(30 41 59);
-          color: rgb(148 163 184);
-          font-weight: 500;
-          font-size: 0.875rem;
-          border: 1px solid rgb(51 65 85);
-          cursor: pointer;
-        }
-        .animate-in {
-          animation: fadeIn 0.2s ease-out;
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(8px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
     </div>
   )
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return <div className="space-y-1.5"><label className="text-xs font-medium text-[#8E8E93]">{label}</label>{children}</div>
+}
+
+function Toggle({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
   return (
-    <div className="space-y-1.5">
-      <label className="text-xs font-medium text-slate-400">{label}</label>
-      {children}
-    </div>
+    <button onClick={onClick} className={`flex-1 py-3 rounded-xl text-sm font-medium transition-colors ${active ? 'bg-white text-black' : 'bg-[#1C1C1E] text-[#636366]'}`}>
+      {label}
+    </button>
   )
 }
 
-function SexButton({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
+function NumInput({ value, onChange, mode }: { value: number; onChange: (v: number) => void; mode?: string }) {
   return (
-    <button
-      onClick={onClick}
-      className={`flex-1 py-3 rounded-xl text-sm font-medium transition-colors ${
-        active ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400 border border-slate-700'
-      }`}
-    >
-      {label}
-    </button>
+    <input type="number" inputMode={mode === 'decimal' ? 'decimal' : 'numeric'} value={value} onChange={(e) => onChange(+e.target.value)}
+      className="w-full px-4 py-3 rounded-xl bg-[#1C1C1E] border border-[#38383A] text-white text-sm focus:border-[#636366] focus:outline-none" />
   )
 }

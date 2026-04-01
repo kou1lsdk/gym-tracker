@@ -35,6 +35,16 @@ export type MuscleGroup =
   | 'calves'
   | 'core'
 
+export type RPE = 6 | 7 | 8 | 9 | 10
+
+export const RPE_CONFIG = {
+  6:  { label: 'Легко', emoji: '😊', nextSetDelta: 2.5, nextWorkoutDelta: 5 },
+  7:  { label: 'Норм',  emoji: '💪', nextSetDelta: 0,   nextWorkoutDelta: 2.5 },
+  8:  { label: 'Важко', emoji: '🔥', nextSetDelta: 0,   nextWorkoutDelta: 0 },
+  9:  { label: 'Макс',  emoji: '⚡', nextSetDelta: -2.5, nextWorkoutDelta: 0 },
+  10: { label: 'Макс',  emoji: '⚡', nextSetDelta: -2.5, nextWorkoutDelta: 0 },
+} as const
+
 export interface WorkoutLog {
   id?: number
   date: string
@@ -52,6 +62,7 @@ export interface SetLog {
   targetReps: number
   actualReps?: number
   weightKg?: number
+  rpe?: RPE
   completed: boolean
   timestamp: string
 }
@@ -86,4 +97,14 @@ export interface UserProfile {
   notificationTime: string
   createdAt: string
   updatedAt: string
+}
+
+export interface Mascot {
+  id?: number
+  level: number
+  xp: number
+  mood: number // 1-5
+  streak: number
+  lastWorkoutDate: string
+  createdAt: string
 }

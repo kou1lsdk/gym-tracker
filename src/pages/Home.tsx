@@ -1,152 +1,137 @@
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router'
-import { Dumbbell, Scale, Flame, ChevronRight } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import { PageWrapper } from '../components/layout/PageWrapper'
+import { MonkeyMascot } from '../components/mascot/MonkeyMascot'
+import { DotCalendar } from '../components/charts/DotCalendar'
 import { useProfile } from '../hooks/useProfile'
 import { useTodayWorkout, useWorkoutHistory } from '../hooks/useWorkout'
 import { useLatestBodyWeight, useWeekStreak } from '../hooks/useStats'
-import { uk } from '../locale/uk'
+import { useMascot } from '../hooks/useMascot'
+import { shouldRemindBackup } from '../db/backup'
 import { formatDate } from '../utils/dateUtils'
+import { useMemo } from 'react'
 
 export function Home() {
   const navigate = useNavigate()
   const { profile } = useProfile()
   const { programDay, isTrainingDay } = useTodayWorkout(profile?.trainingDays ?? [])
-  const history = useWorkoutHistory(5)
+  const history = useWorkoutHistory(50)
   const latestWeight = useLatestBodyWeight()
-  const streak = useWeekStreak()
+  useWeekStreak() // keep hook active
+  const { state: mascotState, checkMoodDecay } = useMascot()
+
+  useEffect(() => { checkMoodDecay() }, [])
+
+  const workoutDates = useMemo(() => new Set(history.map(w => w.date)), [history])
 
   return (
-    <PageWrapper>
-      <div className="space-y-5">
-        {/* Greeting */}
-        <div>
-          <h1 className="text-2xl font-bold text-white">
-            {uk.home.greeting}, {profile?.name ?? 'Атлет'} 👋
-          </h1>
-          <p className="text-sm text-slate-400 mt-1">
-            {new Date().toLocaleDateString('uk-UA', { weekday: 'long', day: 'numeric', month: 'long' })}
-          </p>
-        </div>
+    <PageWrapper title={`Привіт, ${profile?.name ?? 'Атлет'}`}>
+      <div className="space-y-4">
 
-        {/* Weight prompt for new users */}
-        {!latestWeight && history.length > 0 && (
-          <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4">
-            <p className="text-sm text-emerald-300 font-medium">Запиши свою вагу тіла!</p>
-            <p className="text-xs text-emerald-200/60 mt-1">Щоб відстежувати прогрес набору маси</p>
-            <button
-              onClick={() => navigate('/progress')}
-              className="mt-3 w-full py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium active:bg-emerald-700"
-            >
-              Записати вагу
-            </button>
-          </div>
-        )}
+        {/* Mascot */}
+        {mascotState && <MonkeyMascot state={mascotState} compact />}
 
         {/* Stats row */}
-        <div className="grid grid-cols-3 gap-3">
-          <StatCard
-            icon={<Scale size={18} className="text-emerald-400" />}
-            value={latestWeight ? `${latestWeight.weightKg}` : '—'}
-            label={uk.home.bodyWeight}
-            unit="кг"
-          />
-          <StatCard
-            icon={<Dumbbell size={18} className="text-indigo-400" />}
-            value={String(history.length)}
-            label="Тренувань"
-          />
-          <StatCard
-            icon={<Flame size={18} className="text-orange-400" />}
-            value={String(streak)}
-            label={uk.home.weekStreak}
-          />
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-[#1C1C1E] rounded-2xl p-4">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs text-[#8E8E93]">Вага тіла</span>
+            </div>
+            <p className="text-2xl font-bold text-white tabular-nums">
+              {latestWeight ? latestWeight.weightKg : '—'}
+              <span className="text-sm text-[#636366] ml-1">кг</span>
+            </p>
+          </div>
+          <div className="bg-[#1C1C1E] rounded-2xl p-4">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs text-[#8E8E93]">Обʼєм за тиждень</span>
+            </div>
+            <p className="text-2xl font-bold text-white tabular-nums">
+              {history.length > 0 ? history.length : '0'}
+              <span className="text-sm text-[#636366] ml-1">трен.</span>
+            </p>
+          </div>
         </div>
 
+        {/* Dot Calendar */}
+        <DotCalendar workoutDates={workoutDates} weeks={12} />
+
         {/* Today's workout */}
-        <div className="bg-slate-800/50 rounded-2xl border border-slate-700 overflow-hidden">
-          <div className="px-4 py-3 border-b border-slate-700">
-            <h2 className="font-semibold text-white">{uk.home.todayWorkout}</h2>
-          </div>
-          {isTrainingDay && programDay ? (
+        {isTrainingDay && programDay ? (
+          <div className="bg-[#1C1C1E] rounded-2xl overflow-hidden">
             <div className="p-4 space-y-3">
-              <p className="text-indigo-400 font-medium">{programDay.name}</p>
-              <div className="space-y-2">
-                {programDay.exercises.map((ex) => (
-                  <div key={ex.id} className="flex items-center justify-between text-sm">
-                    <span className="text-slate-300">{ex.name}</span>
-                    <span className="text-slate-500">{ex.sets}×{ex.repsMin}-{ex.repsMax}</span>
-                  </div>
-                ))}
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-[#8E8E93]">Сьогодні</p>
+                  <p className="text-lg font-bold text-white">{programDay.shortName}</p>
+                </div>
+                <span className="text-xs text-[#636366]">{programDay.exercises.length} вправ</span>
               </div>
               <button
                 onClick={() => navigate('/workout')}
-                className="w-full py-3 rounded-xl bg-indigo-600 text-white font-semibold active:bg-indigo-700 transition-colors mt-2"
+                className="w-full py-3.5 rounded-xl bg-white text-black font-semibold text-sm active:bg-[#E5E5EA] transition-colors"
               >
-                {uk.home.startWorkout} 💪
+                Почати тренування
               </button>
             </div>
-          ) : (
-            <div className="p-6 text-center space-y-2">
-              <p className="text-2xl">😴</p>
-              <p className="text-slate-400">{uk.home.restDay}</p>
-              <p className="text-xs text-slate-600">Відпочинок — це коли мʼязи ростуть</p>
-            </div>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div className="bg-[#1C1C1E] rounded-2xl p-6 text-center space-y-2">
+            <p className="text-2xl">😴</p>
+            <p className="text-[#8E8E93]">День відпочинку</p>
+            <p className="text-xs text-[#636366]">Відпочинок — це коли мʼязи ростуть</p>
+          </div>
+        )}
+
+        {/* Backup reminder */}
+        {shouldRemindBackup() && history.length > 3 && (
+          <button
+            onClick={() => navigate('/settings')}
+            className="w-full py-3 px-4 bg-[#FF9F0A]/10 border border-[#FF9F0A]/20 rounded-2xl text-left"
+          >
+            <p className="text-sm text-[#FF9F0A] font-medium">Зроби бекап даних</p>
+            <p className="text-xs text-[#FF9F0A]/60">Щоб не втратити прогрес</p>
+          </button>
+        )}
 
         {/* Recent history */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <h2 className="font-semibold text-white">{uk.history.title}</h2>
-            {history.length > 0 && (
-              <button onClick={() => navigate('/progress')} className="text-xs text-indigo-400 flex items-center gap-1">
-                Все <ChevronRight size={14} />
+        {history.length > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold text-white">Останні тренування</span>
+              <button onClick={() => navigate('/progress')} className="text-xs text-[#636366] flex items-center gap-0.5">
+                Все <ChevronRight size={12} />
               </button>
-            )}
-          </div>
-          {history.length === 0 ? (
-            <div className="py-6 text-center bg-slate-800/30 rounded-xl">
-              <p className="text-slate-500 text-sm">Ще немає тренувань</p>
-              <p className="text-slate-600 text-xs mt-1">Почни перше тренування і побачиш прогрес тут!</p>
             </div>
-          ) : (
-            history.slice(0, 3).map((w) => (
-              <div key={w.id} className="flex items-center justify-between py-2.5 px-3 bg-slate-800/30 rounded-xl">
+            {history.slice(0, 3).map((w) => (
+              <div key={w.id} className="flex items-center justify-between py-3 px-4 bg-[#1C1C1E] rounded-2xl">
                 <div>
-                  <p className="text-sm font-medium text-slate-300">
-                    {getProgramDayName(w.programDayId)}
-                  </p>
-                  <p className="text-xs text-slate-500">{formatDate(w.date)}</p>
+                  <p className="text-sm font-medium text-white">{getDayLabel(w.programDayId)}</p>
+                  <p className="text-xs text-[#636366]">{formatDate(w.date)}</p>
                 </div>
-                {w.completedAt && (
-                  <span className="text-xs text-emerald-400">✓</span>
-                )}
+                {w.completedAt && <span className="text-xs text-[#30D158]">✓</span>}
               </div>
-            ))
-          )}
-        </div>
+            ))}
+          </div>
+        )}
+
+        {/* Weight prompt */}
+        {!latestWeight && history.length > 0 && (
+          <button
+            onClick={() => navigate('/progress')}
+            className="w-full py-3.5 px-4 bg-[#30D158]/10 border border-[#30D158]/20 rounded-2xl text-left"
+          >
+            <p className="text-sm text-[#30D158] font-medium">Запиши вагу тіла</p>
+            <p className="text-xs text-[#30D158]/60">Щоб відстежувати прогрес</p>
+          </button>
+        )}
       </div>
     </PageWrapper>
   )
 }
 
-function StatCard({ icon, value, label, unit }: { icon: React.ReactNode; value: string; label: string; unit?: string }) {
-  return (
-    <div className="bg-slate-800/50 rounded-xl border border-slate-700 p-3 text-center">
-      <div className="flex justify-center mb-1">{icon}</div>
-      <p className="text-lg font-bold text-white">
-        {value}{unit && <span className="text-xs text-slate-400 ml-0.5">{unit}</span>}
-      </p>
-      <p className="text-[10px] text-slate-500 mt-0.5">{label}</p>
-    </div>
-  )
-}
-
-function getProgramDayName(id: string): string {
-  const map: Record<string, string> = {
-    push: 'Push — Груди, Плечі',
-    pull: 'Pull — Спина, Біцепс',
-    legs: 'Legs — Ноги',
-  }
+function getDayLabel(id: string): string {
+  const map: Record<string, string> = { push: 'Push', pull: 'Pull', legs: 'Legs' }
   return map[id] ?? id
 }
