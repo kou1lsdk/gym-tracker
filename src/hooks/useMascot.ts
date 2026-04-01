@@ -1,4 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
+import { useEffect, useRef } from 'react'
 import { db } from '../db/database'
 import type { Mascot } from '../types/workout'
 import { todayISO } from '../utils/dateUtils'
@@ -19,7 +20,7 @@ export interface MascotState {
   ascii: string
 }
 
-const LEVELS: { emoji: string; title: string; phrase: string; ascii: string }[] = [
+const LEVELS = [
   {
     emoji: '🐒', title: 'Малюк',
     phrase: 'Давай тренуватись!',
@@ -50,8 +51,6 @@ const LEVELS: { emoji: string; title: string; phrase: string; ascii: string }[] 
 function getMascotState(mascot: Mascot): MascotState {
   const lvlIndex = Math.min(mascot.level - 1, LEVELS.length - 1)
   const lvl = LEVELS[Math.max(0, lvlIndex)]
-
-  // Mood affects phrase
   let phrase = lvl.phrase
   if (mascot.mood <= 1) phrase = 'Сумую за тренуваннями...'
   else if (mascot.mood === 2) phrase = 'Давно не бачились!'
@@ -69,35 +68,42 @@ function getMascotState(mascot: Mascot): MascotState {
   }
 }
 
-export function useMascot() {
-  const mascot = useLiveQuery(async () => {
-    const m = await db.mascot.get(1)
-    if (!m) {
-      await db.mascot.add({
-        id: 1, level: 1, xp: 0, mood: 3, streak: 0,
-        lastWorkoutDate: '', createdAt: new Date().toISOString(),
-      })
-      return await db.mascot.get(1)
-    }
-    return m
-  })
+// Ensure mascot record exists (run once)
+async function ensureMascot(): Promise<void> {
+  const count = await db.mascot.count()
+  if (count === 0) {
+    await db.mascot.add({
+      id: 1, level: 1, xp: 0, mood: 3, streak: 0,
+      lastWorkoutDate: '', createdAt: new Date().toISOString(),
+    })
+  }
+}
 
+export function useMascot() {
+  const initialized = useRef(false)
+
+  // Init mascot once
+  useEffect(() => {
+    if (!initialized.current) {
+      initialized.current = true
+      ensureMascot()
+    }
+  }, [])
+
+  // Read mascot reactively (don't write inside query!)
+  const mascot = useLiveQuery(() => db.mascot.get(1))
   const state = mascot ? getMascotState(mascot) : null
 
   async function onWorkoutComplete() {
     const m = await db.mascot.get(1)
     if (!m) return
-
     const today = todayISO()
-    if (m.lastWorkoutDate === today) return // already counted today
-
+    if (m.lastWorkoutDate === today) return
     const newXp = m.xp + XP_PER_WORKOUT
     const levelUps = Math.floor(newXp / XP_PER_LEVEL)
-    const newLevel = Math.min(m.level + levelUps, LEVELS.length)
-
     await db.mascot.update(1, {
       xp: newXp,
-      level: newLevel,
+      level: Math.min(m.level + levelUps, LEVELS.length),
       mood: Math.min(5, m.mood + 1),
       streak: m.streak + 1,
       lastWorkoutDate: today,
@@ -107,10 +113,7 @@ export function useMascot() {
   async function checkMoodDecay() {
     const m = await db.mascot.get(1)
     if (!m || !m.lastWorkoutDate) return
-
-    const daysSince = Math.floor(
-      (Date.now() - new Date(m.lastWorkoutDate).getTime()) / (1000 * 60 * 60 * 24)
-    )
+    const daysSince = Math.floor((Date.now() - new Date(m.lastWorkoutDate).getTime()) / (1000 * 60 * 60 * 24))
     const decaySteps = Math.floor(daysSince / MOOD_DECAY_DAYS)
     if (decaySteps > 0) {
       const newMood = Math.max(1, m.mood - decaySteps)

@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router'
 import { ChevronRight } from 'lucide-react'
 import { PageWrapper } from '../components/layout/PageWrapper'
@@ -20,8 +20,14 @@ export function Home() {
   const latestWeight = useLatestBodyWeight()
   useWeekStreak() // keep hook active
   const { state: mascotState, checkMoodDecay } = useMascot()
+  const moodChecked = useRef(false)
 
-  useEffect(() => { checkMoodDecay() }, [])
+  useEffect(() => {
+    if (!moodChecked.current) {
+      moodChecked.current = true
+      checkMoodDecay()
+    }
+  }, [checkMoodDecay])
 
   const workoutDates = useMemo(() => new Set(history.map(w => w.date)), [history])
 
