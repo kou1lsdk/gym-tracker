@@ -4,6 +4,7 @@ import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
+  base: '/gym-tracker/',
   plugins: [
     react(),
     tailwindcss(),
@@ -18,12 +19,12 @@ export default defineConfig({
         background_color: '#0f172a',
         display: 'standalone',
         orientation: 'portrait',
-        start_url: '/',
-        scope: '/',
+        start_url: '/gym-tracker/',
+        scope: '/gym-tracker/',
         icons: [
-          { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
-          { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
-          { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          { src: '/gym-tracker/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+          { src: '/gym-tracker/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+          { src: '/gym-tracker/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
       workbox: {
