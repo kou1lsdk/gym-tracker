@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router'
 import { Play, Check, Pencil, ChevronDown, ChevronUp, X, Undo2 } from 'lucide-react'
 import { PageWrapper } from '../components/layout/PageWrapper'
 import { RestTimer } from '../components/workout/RestTimer'
+import { PhaseTimer } from '../components/workout/PhaseTimer'
 import { MonkeyMascot } from '../components/mascot/MonkeyMascot'
 import { NumberStepper } from '../components/ui/NumberStepper'
 import { useProfile } from '../hooks/useProfile'
@@ -12,11 +13,13 @@ import { useAppStore } from '../store/appStore'
 import { useWakeLock } from '../hooks/useTimer'
 import { EXERCISES, getDefaultWeight } from '../data/exercises'
 import { PPL_BEGINNER } from '../data/programs/ppl-beginner'
+import { WARMUP, COOLDOWN } from '../data/warmup'
 import { autoBackup } from '../db/backup'
+import { getSmartWeight } from '../engine/progression'
 import type { RPE } from '../types/workout'
 import { RPE_CONFIG } from '../types/workout'
 
-// Default weights now calculated from body weight in getDefaultWeight()
+type Phase = 'pre' | 'warmup' | 'workout' | 'cooldown' | 'summary'
 
 export function Workout() {
   const navigate = useNavigate()
@@ -28,8 +31,10 @@ export function Workout() {
   const sets = useWorkoutSets(activeWorkout.workoutLogId)
   const { request: requestWakeLock, release: releaseWakeLock } = useWakeLock()
   const { state: mascotState, onWorkoutComplete } = useMascot()
-  const [showSummary, setShowSummary] = useState(false)
+
+  const [phase, setPhase] = useState<Phase>(activeWorkout.isActive ? 'workout' : 'pre')
   const [selectedDayId, setSelectedDayId] = useState<string | null>(null)
+
   const activeDayId = activeWorkout.programDayId ?? selectedDayId ?? programDay?.id ?? PPL_BEGINNER.days[0].id
   const activeDay = PPL_BEGINNER.days.find((d) => d.id === activeDayId)!
 
@@ -42,6 +47,7 @@ export function Workout() {
 
   const handleStart = async () => {
     await beginWorkout(activeDayId)
+    setPhase('warmup')
   }
 
   const handleFinish = async () => {
@@ -49,57 +55,32 @@ export function Workout() {
       await completeWorkout(activeWorkout.workoutLogId)
       await onWorkoutComplete()
       await autoBackup()
-      setShowSummary(true)
+      setPhase('cooldown')
     }
   }
 
-  // Total progress
   const totalSetsTarget = activeDay.exercises.reduce((s, e) => s + e.sets, 0)
   const completedTotal = sets.length
   const elapsed = activeWorkout.startedAt
     ? Math.round((Date.now() - new Date(activeWorkout.startedAt).getTime()) / 60000)
     : 0
 
-  // Summary
-  if (showSummary) {
-    const totalVolume = sets.reduce((sum, s) => sum + (s.weightKg ?? 0) * (s.actualReps ?? 0), 0)
-    return (
-      <PageWrapper>
-        <div className="flex flex-col items-center justify-center min-h-[70vh] text-center space-y-6">
-          {mascotState && <MonkeyMascot state={mascotState} />}
-          <div className="grid grid-cols-3 gap-3 w-full max-w-sm">
-            <SBox value={sets.length} label="Підходів" />
-            <SBox value={Math.round(totalVolume)} label="Обʼєм кг" />
-            <SBox value={elapsed} label="Хвилин" />
-          </div>
-          <button onClick={() => { setShowSummary(false); navigate('/') }}
-            className="w-full max-w-sm py-3.5 rounded-xl bg-white text-black font-semibold text-sm">
-            На головну
-          </button>
-        </div>
-      </PageWrapper>
-    )
-  }
-
-  // Pre-workout: day picker + exercise list
-  if (!activeWorkout.isActive) {
+  // ═══════════════════════════════════
+  // PHASE: Pre-workout (day selection)
+  // ═══════════════════════════════════
+  if (phase === 'pre' && !activeWorkout.isActive) {
     return (
       <PageWrapper title="Тренування">
         <div className="space-y-4">
-          {/* Day picker */}
           <div className="flex gap-2">
             {PPL_BEGINNER.days.map((day) => (
-              <button key={day.id}
-                onClick={() => setSelectedDayId(day.id)}
+              <button key={day.id} onClick={() => setSelectedDayId(day.id)}
                 className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                  activeDayId === day.id ? 'bg-white text-black' : 'bg-[#1C1C1E] text-[#8E8E93]'
-                }`}>
+                  activeDayId === day.id ? 'bg-white text-black' : 'bg-[#1C1C1E] text-[#8E8E93]'}`}>
                 {day.shortName}
               </button>
             ))}
           </div>
-
-          {/* Exercise list */}
           <div className="bg-[#1C1C1E] rounded-2xl divide-y divide-[#38383A]">
             {activeDay.exercises.map((ex, i) => (
               <div key={ex.id} className="flex items-center justify-between px-4 py-3">
@@ -111,9 +92,8 @@ export function Workout() {
               </div>
             ))}
           </div>
-
           <button onClick={handleStart}
-            className="w-full py-3.5 rounded-xl bg-white text-black font-semibold text-sm active:bg-[#E5E5EA] transition-colors flex items-center justify-center gap-2">
+            className="w-full py-3.5 rounded-xl bg-white text-black font-semibold text-sm active:bg-[#E5E5EA] flex items-center justify-center gap-2">
             <Play size={16} fill="black" /> Почати
           </button>
         </div>
@@ -121,7 +101,67 @@ export function Workout() {
     )
   }
 
-  // Active workout — SCROLLABLE VIEW of all exercises
+  // ═══════════════════════════════════
+  // PHASE: Warmup
+  // ═══════════════════════════════════
+  if (phase === 'warmup') {
+    const warmupExercises = WARMUP[activeDayId] ?? WARMUP.push
+    return (
+      <PhaseTimer
+        title="🔥 Розминка"
+        exercises={warmupExercises}
+        onComplete={() => setPhase('workout')}
+        onSkip={() => setPhase('workout')}
+      />
+    )
+  }
+
+  // ═══════════════════════════════════
+  // PHASE: Cooldown
+  // ═══════════════════════════════════
+  if (phase === 'cooldown') {
+    const cooldownExercises = COOLDOWN[activeDayId] ?? COOLDOWN.push
+    return (
+      <PhaseTimer
+        title="🧘 Розтяжка"
+        exercises={cooldownExercises}
+        onComplete={() => setPhase('summary')}
+        onSkip={() => setPhase('summary')}
+      />
+    )
+  }
+
+  // ═══════════════════════════════════
+  // PHASE: Summary
+  // ═══════════════════════════════════
+  if (phase === 'summary') {
+    const totalVolume = sets.reduce((sum, s) => sum + (s.weightKg ?? 0) * (s.actualReps ?? 0), 0)
+    return (
+      <PageWrapper>
+        <div className="flex flex-col items-center justify-center min-h-[70vh] text-center space-y-6">
+          {mascotState && <MonkeyMascot state={mascotState} />}
+          <div className="grid grid-cols-3 gap-3 w-full max-w-sm">
+            <SBox value={sets.length} label="Підходів" />
+            <SBox value={Math.round(totalVolume)} label="Обʼєм кг" />
+            <SBox value={elapsed} label="Хвилин" />
+          </div>
+          {/* Post-workout tip */}
+          <div className="bg-[#1C1C1E] rounded-2xl p-4 w-full max-w-sm text-left">
+            <p className="text-sm text-[#FF9F0A] font-medium">💡 Після тренування</p>
+            <p className="text-xs text-[#8E8E93] mt-1">Зʼїж 25-30г білка протягом 2 годин. Курка, яйця, сир, або протеїновий шейк.</p>
+          </div>
+          <button onClick={() => { setPhase('pre'); navigate('/') }}
+            className="w-full max-w-sm py-3.5 rounded-xl bg-white text-black font-semibold text-sm">
+            На головну
+          </button>
+        </div>
+      </PageWrapper>
+    )
+  }
+
+  // ═══════════════════════════════════
+  // PHASE: Active Workout
+  // ═══════════════════════════════════
   const allDone = completedTotal >= totalSetsTarget
 
   return (
@@ -136,17 +176,14 @@ export function Workout() {
           </div>
           <div className="flex items-center gap-2">
             {completedTotal > 0 && (
-              <button onClick={async () => {
-                await undoLastSet(activeWorkout.workoutLogId!)
-              }} className="p-2 rounded-xl bg-[#1C1C1E] active:bg-[#2C2C2E]" title="Скасувати останній підхід">
+              <button onClick={() => undoLastSet(activeWorkout.workoutLogId!)}
+                className="p-2 rounded-xl bg-[#1C1C1E] active:bg-[#2C2C2E]">
                 <Undo2 size={16} className="text-[#8E8E93]" />
               </button>
             )}
             <button onClick={() => {
-              if (confirm('Скасувати тренування? Всі записи будуть видалені.')) {
-                cancelWorkout(activeWorkout.workoutLogId!)
-              }
-            }} className="p-2 rounded-xl bg-[#1C1C1E] active:bg-[#2C2C2E]" title="Скасувати тренування">
+              if (confirm('Скасувати тренування?')) cancelWorkout(activeWorkout.workoutLogId!)
+            }} className="p-2 rounded-xl bg-[#1C1C1E] active:bg-[#2C2C2E]">
               <X size={16} className="text-[#FF453A]" />
             </button>
             <div className="text-right ml-1">
@@ -159,7 +196,7 @@ export function Workout() {
           </div>
         </div>
 
-        {/* All exercises in scroll */}
+        {/* Exercise blocks */}
         {activeDay.exercises.map((exercise) => (
           <ExerciseBlock
             key={exercise.id}
@@ -170,9 +207,7 @@ export function Workout() {
             onSetComplete={async (weight, reps, rpe) => {
               const exSets = sets.filter(s => s.exerciseId === exercise.id)
               await logSet(activeWorkout.workoutLogId!, exercise.id, exSets.length + 1, exercise.repsMax, reps, weight, rpe)
-              if (exSets.length + 1 < exercise.sets) {
-                startRestTimer(exercise.restSeconds)
-              }
+              if (exSets.length + 1 < exercise.sets) startRestTimer(exercise.restSeconds)
             }}
           />
         ))}
@@ -193,7 +228,9 @@ export function Workout() {
   )
 }
 
-// Single exercise block with all its sets
+// ═══════════════════════════════════
+// Exercise Block
+// ═══════════════════════════════════
 function ExerciseBlock({ exercise, workoutLogId, userWeight, completedSets, onSetComplete }: {
   exercise: { id: string; name: string; sets: number; repsMin: number; repsMax: number; restSeconds: number }
   workoutLogId: number
@@ -206,12 +243,17 @@ function ExerciseBlock({ exercise, workoutLogId, userWeight, completedSets, onSe
   const lastWorkoutSets = useExerciseLastSets(exercise.id, workoutLogId)
   const [showTips, setShowTips] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
+  const [smartWeight, setSmartWeight] = useState<number | null>(null)
+
+  // Load smart weight once
+  useEffect(() => {
+    getSmartWeight(exercise.id, userWeight, workoutLogId).then(setSmartWeight)
+  }, [exercise.id, userWeight, workoutLogId])
 
   const shouldShow = !isDone || !collapsed
 
   return (
-    <div className={`bg-[#1C1C1E] rounded-2xl overflow-hidden transition-colors ${isDone ? 'opacity-60' : ''}`}>
-      {/* Exercise header */}
+    <div className={`bg-[#1C1C1E] rounded-2xl overflow-hidden ${isDone ? 'opacity-60' : ''}`}>
       <button onClick={() => isDone ? setCollapsed(!collapsed) : setShowTips(!showTips)}
         className="w-full flex items-center justify-between px-4 py-3 text-left">
         <div className="flex items-center gap-3">
@@ -229,14 +271,11 @@ function ExerciseBlock({ exercise, workoutLogId, userWeight, completedSets, onSe
           </span>
         </div>
         <div className="flex items-center gap-2">
-          {!isDone && exerciseInfo && (
-            <span className="text-[10px] text-[#636366]">💡 техніка</span>
-          )}
+          {!isDone && exerciseInfo && <span className="text-[10px] text-[#636366]">💡</span>}
           {isDone && (collapsed ? <ChevronDown size={16} className="text-[#636366]" /> : <ChevronUp size={16} className="text-[#636366]" />)}
         </div>
       </button>
 
-      {/* Tips panel */}
       {showTips && !isDone && exerciseInfo && (
         <div className="mx-4 mb-3 p-3 bg-[#2C2C2E] rounded-xl space-y-1.5">
           {exerciseInfo.tip.map((t, i) => (
@@ -248,14 +287,12 @@ function ExerciseBlock({ exercise, workoutLogId, userWeight, completedSets, onSe
 
       {shouldShow && (
         <div className="px-4 pb-4 space-y-2">
-          {/* Last time reference */}
           {lastWorkoutSets.length > 0 && completedSets.length === 0 && (
             <p className="text-[11px] text-[#636366]">
               Минулого разу: {lastWorkoutSets.map(s => `${s.weightKg}×${s.actualReps}`).join(' / ')}
             </p>
           )}
 
-          {/* Sets */}
           {Array.from({ length: exercise.sets }).map((_, i) => {
             const logged = completedSets.find(s => s.setNumber === i + 1)
             const prevLogged = i > 0 ? completedSets.find(s => s.setNumber === i) : undefined
@@ -275,18 +312,12 @@ function ExerciseBlock({ exercise, workoutLogId, userWeight, completedSets, onSe
 
             if (i > completedSets.length) return null
 
-            const defWeight = prevLogged?.weightKg ?? lastTimeSet?.weightKg ?? getDefaultWeight(exercise.id, userWeight)
+            const defWeight = prevLogged?.weightKg ?? smartWeight ?? lastTimeSet?.weightKg ?? getDefaultWeight(exercise.id, userWeight)
             const defReps = prevLogged?.actualReps ?? lastTimeSet?.actualReps ?? Math.round((exercise.repsMin + exercise.repsMax) / 2)
 
             return (
-              <ActiveSetRow
-                key={i}
-                setNumber={i + 1}
-                defaultWeight={defWeight}
-                defaultReps={defReps}
-                targetReps={`${exercise.repsMin}-${exercise.repsMax}`}
-                onComplete={onSetComplete}
-              />
+              <ActiveSetRow key={i} setNumber={i + 1} defaultWeight={defWeight} defaultReps={defReps}
+                targetReps={`${exercise.repsMin}-${exercise.repsMax}`} onComplete={onSetComplete} />
             )
           })}
         </div>
@@ -295,12 +326,11 @@ function ExerciseBlock({ exercise, workoutLogId, userWeight, completedSets, onSe
   )
 }
 
-// The active set input — focused on speed
+// ═══════════════════════════════════
+// Active Set Row
+// ═══════════════════════════════════
 function ActiveSetRow({ setNumber, defaultWeight, defaultReps, targetReps, onComplete }: {
-  setNumber: number
-  defaultWeight: number
-  defaultReps: number
-  targetReps: string
+  setNumber: number; defaultWeight: number; defaultReps: number; targetReps: string
   onComplete: (weight: number, reps: number, rpe: RPE) => Promise<void>
 }) {
   const [weight, setWeight] = useState(defaultWeight)
@@ -317,8 +347,7 @@ function ActiveSetRow({ setNumber, defaultWeight, defaultReps, targetReps, onCom
             <button key={rpe} onClick={() => {
               try { navigator.vibrate?.(50) } catch {}
               onComplete(weight, reps, rpe)
-            }}
-              className="flex flex-col items-center gap-0.5 py-2.5 rounded-xl bg-[#38383A] active:bg-[#48484A] transition-colors">
+            }} className="flex flex-col items-center gap-0.5 py-2.5 rounded-xl bg-[#38383A] active:bg-[#48484A]">
               <span className="text-lg">{RPE_CONFIG[rpe].emoji}</span>
               <span className="text-[9px] text-[#8E8E93]">{RPE_CONFIG[rpe].label}</span>
             </button>
@@ -333,7 +362,6 @@ function ActiveSetRow({ setNumber, defaultWeight, defaultReps, targetReps, onCom
       <div className="flex items-center justify-between">
         <span className="text-xs text-[#8E8E93]">Підхід {setNumber} • {targetReps}</span>
       </div>
-
       {editing ? (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
@@ -350,7 +378,7 @@ function ActiveSetRow({ setNumber, defaultWeight, defaultReps, targetReps, onCom
         </div>
       ) : (
         <div className="flex items-center justify-between">
-          <button onClick={() => setEditing(true)} className="flex items-baseline gap-1.5 group">
+          <button onClick={() => setEditing(true)} className="flex items-baseline gap-1.5">
             <span className="text-2xl font-bold text-white tabular-nums">{weight}</span>
             <span className="text-sm text-[#636366]">кг</span>
             <span className="text-lg text-[#636366] mx-1">×</span>
@@ -358,7 +386,7 @@ function ActiveSetRow({ setNumber, defaultWeight, defaultReps, targetReps, onCom
             <Pencil size={12} className="text-[#636366] ml-1 opacity-50" />
           </button>
           <button onClick={() => setShowRpe(true)}
-            className="px-5 py-2.5 rounded-xl bg-white text-black font-semibold text-sm active:bg-[#E5E5EA] transition-colors">
+            className="px-5 py-2.5 rounded-xl bg-white text-black font-semibold text-sm active:bg-[#E5E5EA]">
             Готово ✓
           </button>
         </div>
