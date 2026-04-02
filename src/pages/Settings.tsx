@@ -5,6 +5,15 @@ import { useProfile } from '../hooks/useProfile'
 import { exportData, importData, downloadJson, getLastBackupDate } from '../db/backup'
 import { generateICS, downloadICS } from '../utils/icsGenerator'
 import { PPL_BEGINNER } from '../data/programs/ppl-beginner'
+import { db } from '../db/database'
+
+const WEEK_DAYS = [
+  { value: 1, label: 'Пн' }, { value: 2, label: 'Вт' }, { value: 3, label: 'Ср' },
+  { value: 4, label: 'Чт' }, { value: 5, label: 'Пт' }, { value: 6, label: 'Сб' },
+  { value: 0, label: 'Нд' },
+]
+
+const DAY_NAMES: Record<number, string> = { 0: 'Нд', 1: 'Пн', 2: 'Вт', 3: 'Ср', 4: 'Чт', 5: 'Пт', 6: 'Сб' }
 
 export function Settings() {
   const { profile } = useProfile()
@@ -30,7 +39,22 @@ export function Settings() {
     downloadICS(generateICS(profile.trainingDays, profile.notificationTime, PPL_BEGINNER.days.map(d => d.shortName)))
   }
 
+  const toggleDay = async (day: number) => {
+    if (!profile) return
+    const current = profile.trainingDays
+    const updated = current.includes(day)
+      ? current.filter(d => d !== day)
+      : [...current, day].sort((a, b) => (a === 0 ? 7 : a) - (b === 0 ? 7 : b))
+    await db.userProfile.update(1, { trainingDays: updated, updatedAt: new Date().toISOString() })
+  }
+
   const lastBackup = getLastBackupDate()
+
+  // Map training days to program days
+  const dayMapping = profile?.trainingDays.map((d, i) => ({
+    day: DAY_NAMES[d],
+    program: PPL_BEGINNER.days[i % PPL_BEGINNER.days.length].shortName,
+  })) ?? []
 
   return (
     <PageWrapper title="Налаштування">
@@ -41,23 +65,46 @@ export function Settings() {
             <p className="text-sm font-semibold text-white mb-2">Профіль</p>
             <Row label="Імʼя" value={profile.name} />
             <Row label="Вік" value={`${profile.age}`} />
-            <Row label="Зріст" value={`${profile.heightCm} см`} />
-            <Row label="Вага" value={`${profile.weightKg} кг`} />
+            <Row label="Зріст / Вага" value={`${profile.heightCm}см / ${profile.weightKg}кг`} />
+          </div>
+        )}
+
+        {/* Training days editor */}
+        {profile && (
+          <div className="bg-[#1C1C1E] rounded-2xl p-4 space-y-3">
+            <p className="text-sm font-semibold text-white">Дні тренувань</p>
+            <div className="flex gap-2">
+              {WEEK_DAYS.map(({ value, label }) => (
+                <button key={value} onClick={() => toggleDay(value)}
+                  className={`flex-1 py-2.5 rounded-xl text-xs font-medium transition-colors ${
+                    profile.trainingDays.includes(value) ? 'bg-white text-black' : 'bg-[#2C2C2E] text-[#636366]'
+                  }`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            {/* Day → Program mapping */}
+            {dayMapping.length > 0 && (
+              <div className="flex gap-2 flex-wrap">
+                {dayMapping.map((m, i) => (
+                  <span key={i} className="text-xs text-[#8E8E93] bg-[#2C2C2E] px-2 py-1 rounded-lg">
+                    {m.day} → {m.program}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
         {/* Data */}
         <div className="space-y-2">
           <p className="text-sm font-semibold text-white">Дані</p>
-
-          <ActionButton icon={<Download size={18} className="text-[#30D158]" />} title="Експорт" desc={lastBackup ? `Останній: ${new Date(lastBackup).toLocaleDateString('uk-UA')}` : 'Завантажити JSON бекап'} onClick={handleExport} />
+          <ActionButton icon={<Download size={18} className="text-[#30D158]" />} title="Експорт" desc={lastBackup ? `Останній: ${new Date(lastBackup).toLocaleDateString('uk-UA')}` : 'JSON бекап'} onClick={handleExport} />
           <ActionButton icon={<Upload size={18} className="text-[#0A84FF]" />} title="Імпорт" desc="Відновити з файлу" onClick={() => fileInputRef.current?.click()} />
-          <ActionButton icon={<Calendar size={18} className="text-[#FF9F0A]" />} title="Календар" desc="Додати розклад в Apple Calendar" onClick={handleCalendar} />
-
+          <ActionButton icon={<Calendar size={18} className="text-[#FF9F0A]" />} title="Календар" desc="Apple Calendar" onClick={handleCalendar} />
           <input ref={fileInputRef} type="file" accept=".json" onChange={handleImport} className="hidden" />
         </div>
 
-        {/* Info */}
         <div className="flex items-center gap-2 px-4 py-3 text-[#636366]">
           <Info size={14} />
           <span className="text-xs">v2.0 • Дані зберігаються локально + авто-бекап</span>

@@ -59,6 +59,19 @@ export function useWorkoutSets(workoutLogId: number | null) {
   ) ?? []
 }
 
+export function useExerciseLastSets(exerciseId: string, currentWorkoutId: number) {
+  return useLiveQuery(async () => {
+    const allSets = await db.setLogs
+      .where('exerciseId').equals(exerciseId)
+      .toArray()
+    // Find sets from the PREVIOUS workout (not current)
+    const prevSets = allSets.filter(s => s.workoutLogId !== currentWorkoutId)
+    if (prevSets.length === 0) return []
+    const lastWorkoutId = prevSets[prevSets.length - 1].workoutLogId
+    return prevSets.filter(s => s.workoutLogId === lastWorkoutId).sort((a, b) => a.setNumber - b.setNumber)
+  }, [exerciseId, currentWorkoutId]) ?? []
+}
+
 export function useExerciseProgress(exerciseId: string) {
   return useLiveQuery(async () => {
     const sets = await db.setLogs.where('exerciseId').equals(exerciseId).toArray()
