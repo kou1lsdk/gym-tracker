@@ -181,8 +181,11 @@ export function Workout() {
                 <Undo2 size={16} className="text-[#8E8E93]" />
               </button>
             )}
-            <button onClick={() => {
-              if (confirm('Скасувати тренування?')) cancelWorkout(activeWorkout.workoutLogId!)
+            <button onClick={async () => {
+              if (confirm('Скасувати тренування?')) {
+                await cancelWorkout(activeWorkout.workoutLogId!)
+                setPhase('pre')
+              }
             }} className="p-2 rounded-xl bg-[#1C1C1E] active:bg-[#2C2C2E]">
               <X size={16} className="text-[#FF453A]" />
             </button>
