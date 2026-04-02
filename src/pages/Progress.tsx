@@ -46,7 +46,10 @@ export function Progress() {
         {/* Body weight */}
         <section className="space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-semibold text-white">Вага тіла</span>
+            <div>
+              <span className="text-sm font-semibold text-white">Вага тіла</span>
+              <span className="text-xs text-[#636366] ml-2">кг, за останні 60 днів</span>
+            </div>
             <button onClick={() => setShowWeightInput(!showWeightInput)} className="p-2 rounded-xl bg-[#1C1C1E] active:bg-[#2C2C2E]">
               <Plus size={16} className="text-[#30D158]" />
             </button>

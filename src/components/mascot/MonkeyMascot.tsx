@@ -8,20 +8,25 @@ interface Props {
 export function MonkeyMascot({ state, compact }: Props) {
   if (compact) {
     return (
-      <div className="flex items-center gap-3 p-4 bg-[#1C1C1E] rounded-2xl">
-        <span className="text-3xl">{state.emoji}</span>
+      <div className="flex items-center gap-4 p-4 bg-[#1C1C1E] rounded-2xl">
+        <pre className="text-white text-[10px] leading-[1.2] font-mono select-none shrink-0">
+          {state.ascii}
+        </pre>
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between">
             <span className="text-sm font-semibold text-white">{state.title}</span>
             <span className="text-xs text-[#8E8E93]">Lv.{state.level}</span>
           </div>
-          <div className="mt-1 h-1.5 bg-[#38383A] rounded-full overflow-hidden">
+          <div className="mt-1.5 h-1.5 bg-[#38383A] rounded-full overflow-hidden">
             <div
               className="h-full bg-[#30D158] rounded-full transition-all duration-500"
               style={{ width: `${(state.xp / state.xpToNext) * 100}%` }}
             />
           </div>
           <p className="text-xs text-[#8E8E93] mt-1 truncate">{state.phrase}</p>
+          {state.streak > 0 && (
+            <p className="text-[10px] text-[#FF9F0A] mt-0.5">🔥 {state.streak} тренувань поспіль</p>
+          )}
         </div>
       </div>
     )

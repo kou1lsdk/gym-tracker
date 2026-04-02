@@ -10,19 +10,13 @@ import { useTodayWorkout, useWorkoutActions, useWorkoutSets, useExerciseLastSets
 import { useMascot } from '../hooks/useMascot'
 import { useAppStore } from '../store/appStore'
 import { useWakeLock } from '../hooks/useTimer'
-import { EXERCISES } from '../data/exercises'
+import { EXERCISES, getDefaultWeight } from '../data/exercises'
 import { PPL_BEGINNER } from '../data/programs/ppl-beginner'
 import { autoBackup } from '../db/backup'
 import type { RPE } from '../types/workout'
 import { RPE_CONFIG } from '../types/workout'
 
-const DEFAULT_WEIGHTS: Record<string, number> = {
-  bench_press: 40, incline_db_press: 24, seated_db_press: 16,
-  lateral_raises: 8, tricep_pushdowns: 25, pullups: 0,
-  barbell_row: 40, single_arm_row: 18, face_pulls: 15,
-  bicep_curls: 12, squat: 50, romanian_deadlift: 40,
-  leg_press: 80, leg_curls: 30, calf_raises: 40,
-}
+// Default weights now calculated from body weight in getDefaultWeight()
 
 export function Workout() {
   const navigate = useNavigate()
@@ -171,6 +165,7 @@ export function Workout() {
             key={exercise.id}
             exercise={exercise}
             workoutLogId={activeWorkout.workoutLogId!}
+            userWeight={profile?.weightKg ?? 70}
             completedSets={sets.filter(s => s.exerciseId === exercise.id)}
             onSetComplete={async (weight, reps, rpe) => {
               const exSets = sets.filter(s => s.exerciseId === exercise.id)
@@ -199,25 +194,25 @@ export function Workout() {
 }
 
 // Single exercise block with all its sets
-function ExerciseBlock({ exercise, workoutLogId, completedSets, onSetComplete }: {
+function ExerciseBlock({ exercise, workoutLogId, userWeight, completedSets, onSetComplete }: {
   exercise: { id: string; name: string; sets: number; repsMin: number; repsMax: number; restSeconds: number }
   workoutLogId: number
+  userWeight: number
   completedSets: Array<{ setNumber: number; weightKg?: number; actualReps?: number; rpe?: number }>
   onSetComplete: (weight: number, reps: number, rpe: RPE) => Promise<void>
 }) {
   const isDone = completedSets.length >= exercise.sets
   const exerciseInfo = EXERCISES[exercise.id]
   const lastWorkoutSets = useExerciseLastSets(exercise.id, workoutLogId)
-
-  // Auto-expand if it's the current exercise (first incomplete)
+  const [showTips, setShowTips] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
 
   const shouldShow = !isDone || !collapsed
 
   return (
     <div className={`bg-[#1C1C1E] rounded-2xl overflow-hidden transition-colors ${isDone ? 'opacity-60' : ''}`}>
-      {/* Exercise header — always visible */}
-      <button onClick={() => setCollapsed(!collapsed)}
+      {/* Exercise header */}
+      <button onClick={() => isDone ? setCollapsed(!collapsed) : setShowTips(!showTips)}
         className="w-full flex items-center justify-between px-4 py-3 text-left">
         <div className="flex items-center gap-3">
           {isDone ? (
@@ -233,18 +228,26 @@ function ExerciseBlock({ exercise, workoutLogId, completedSets, onSetComplete }:
             {exercise.name}
           </span>
         </div>
-        {isDone ? (
-          collapsed ? <ChevronDown size={16} className="text-[#636366]" /> : <ChevronUp size={16} className="text-[#636366]" />
-        ) : null}
+        <div className="flex items-center gap-2">
+          {!isDone && exerciseInfo && (
+            <span className="text-[10px] text-[#636366]">💡 техніка</span>
+          )}
+          {isDone && (collapsed ? <ChevronDown size={16} className="text-[#636366]" /> : <ChevronUp size={16} className="text-[#636366]" />)}
+        </div>
       </button>
+
+      {/* Tips panel */}
+      {showTips && !isDone && exerciseInfo && (
+        <div className="mx-4 mb-3 p-3 bg-[#2C2C2E] rounded-xl space-y-1.5">
+          {exerciseInfo.tip.map((t, i) => (
+            <p key={i} className="text-[11px] text-[#8E8E93]">• {t}</p>
+          ))}
+          <p className="text-[11px] text-[#FF453A] mt-1">⚠ {exerciseInfo.errors}</p>
+        </div>
+      )}
 
       {shouldShow && (
         <div className="px-4 pb-4 space-y-2">
-          {/* Tip - compact */}
-          {exerciseInfo?.tip && !isDone && completedSets.length === 0 && (
-            <p className="text-[11px] text-[#636366] mb-1">💡 {exerciseInfo.tip}</p>
-          )}
-
           {/* Last time reference */}
           {lastWorkoutSets.length > 0 && completedSets.length === 0 && (
             <p className="text-[11px] text-[#636366]">
@@ -259,7 +262,6 @@ function ExerciseBlock({ exercise, workoutLogId, completedSets, onSetComplete }:
             const lastTimeSet = lastWorkoutSets[i]
 
             if (logged) {
-              // Completed set — compact
               const rpeEmoji = logged.rpe ? RPE_CONFIG[logged.rpe as keyof typeof RPE_CONFIG]?.emoji : '✓'
               return (
                 <div key={i} className="flex items-center gap-2 py-1.5 text-sm">
@@ -271,11 +273,9 @@ function ExerciseBlock({ exercise, workoutLogId, completedSets, onSetComplete }:
               )
             }
 
-            // Only show the NEXT uncompleted set (not all remaining)
             if (i > completedSets.length) return null
 
-            // Active set — the main interaction
-            const defWeight = prevLogged?.weightKg ?? lastTimeSet?.weightKg ?? DEFAULT_WEIGHTS[exercise.id] ?? 20
+            const defWeight = prevLogged?.weightKg ?? lastTimeSet?.weightKg ?? getDefaultWeight(exercise.id, userWeight)
             const defReps = prevLogged?.actualReps ?? lastTimeSet?.actualReps ?? Math.round((exercise.repsMin + exercise.repsMax) / 2)
 
             return (
