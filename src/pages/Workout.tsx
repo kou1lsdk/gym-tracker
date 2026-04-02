@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router'
-import { Play, Check, Pencil, ChevronDown, ChevronUp } from 'lucide-react'
+import { Play, Check, Pencil, ChevronDown, ChevronUp, X, Undo2 } from 'lucide-react'
 import { PageWrapper } from '../components/layout/PageWrapper'
 import { RestTimer } from '../components/workout/RestTimer'
 import { MonkeyMascot } from '../components/mascot/MonkeyMascot'
@@ -30,7 +30,7 @@ export function Workout() {
   const { programDay } = useTodayWorkout(profile?.trainingDays ?? [])
   const activeWorkout = useAppStore((s) => s.activeWorkout)
   const { startRestTimer } = useAppStore()
-  const { beginWorkout, logSet, completeWorkout } = useWorkoutActions()
+  const { beginWorkout, logSet, completeWorkout, cancelWorkout, undoLastSet } = useWorkoutActions()
   const sets = useWorkoutSets(activeWorkout.workoutLogId)
   const { request: requestWakeLock, release: releaseWakeLock } = useWakeLock()
   const { state: mascotState, onWorkoutComplete } = useMascot()
@@ -140,11 +140,27 @@ export function Workout() {
             <p className="text-xs text-[#636366]">{activeDay.shortName}</p>
             <p className="text-lg font-bold text-white">{completedTotal}/{totalSetsTarget} підходів</p>
           </div>
-          <div className="text-right">
-            <p className="text-xs text-[#636366]">{elapsed} хв</p>
-            <div className="w-24 h-1.5 bg-[#38383A] rounded-full overflow-hidden mt-1">
-              <div className="h-full bg-[#30D158] rounded-full transition-all"
-                style={{ width: `${(completedTotal / totalSetsTarget) * 100}%` }} />
+          <div className="flex items-center gap-2">
+            {completedTotal > 0 && (
+              <button onClick={async () => {
+                await undoLastSet(activeWorkout.workoutLogId!)
+              }} className="p-2 rounded-xl bg-[#1C1C1E] active:bg-[#2C2C2E]" title="Скасувати останній підхід">
+                <Undo2 size={16} className="text-[#8E8E93]" />
+              </button>
+            )}
+            <button onClick={() => {
+              if (confirm('Скасувати тренування? Всі записи будуть видалені.')) {
+                cancelWorkout(activeWorkout.workoutLogId!)
+              }
+            }} className="p-2 rounded-xl bg-[#1C1C1E] active:bg-[#2C2C2E]" title="Скасувати тренування">
+              <X size={16} className="text-[#FF453A]" />
+            </button>
+            <div className="text-right ml-1">
+              <p className="text-xs text-[#636366]">{elapsed} хв</p>
+              <div className="w-16 h-1.5 bg-[#38383A] rounded-full overflow-hidden mt-1">
+                <div className="h-full bg-[#30D158] rounded-full transition-all"
+                  style={{ width: `${(completedTotal / totalSetsTarget) * 100}%` }} />
+              </div>
             </div>
           </div>
         </div>
@@ -319,10 +335,18 @@ function ActiveSetRow({ setNumber, defaultWeight, defaultReps, targetReps, onCom
       </div>
 
       {editing ? (
-        <div className="flex items-center justify-between gap-2">
-          <NumberStepper value={weight} onChange={setWeight} step={2.5} label="кг" inputMode="decimal" />
-          <NumberStepper value={reps} onChange={setReps} step={1} min={1} max={30} label="" />
-          <button onClick={() => setEditing(false)} className="px-3 py-2 rounded-lg bg-[#38383A] text-xs text-white">OK</button>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-[#636366]">Вага</span>
+            <NumberStepper value={weight} onChange={setWeight} step={2.5} inputMode="decimal" />
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-[#636366]">Повт.</span>
+            <NumberStepper value={reps} onChange={setReps} step={1} min={1} max={30} />
+          </div>
+          <button onClick={() => setEditing(false)} className="w-full py-2 rounded-xl bg-[#38383A] text-sm text-white active:bg-[#48484A]">
+            Готово
+          </button>
         </div>
       ) : (
         <div className="flex items-center justify-between">

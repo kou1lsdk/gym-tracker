@@ -43,7 +43,20 @@ export function useWorkoutActions() {
     storeFinish()
   }
 
-  return { beginWorkout, logSet, completeWorkout }
+  async function cancelWorkout(workoutLogId: number) {
+    await db.setLogs.where('workoutLogId').equals(workoutLogId).delete()
+    await db.workoutLogs.delete(workoutLogId)
+    storeFinish()
+  }
+
+  async function undoLastSet(workoutLogId: number) {
+    const allSets = await db.setLogs.where('workoutLogId').equals(workoutLogId).toArray()
+    if (allSets.length === 0) return
+    const last = allSets.sort((a, b) => (b.id ?? 0) - (a.id ?? 0))[0]
+    if (last.id) await db.setLogs.delete(last.id)
+  }
+
+  return { beginWorkout, logSet, completeWorkout, cancelWorkout, undoLastSet }
 }
 
 export function useWorkoutHistory(limit = 20) {
