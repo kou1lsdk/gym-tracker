@@ -15,7 +15,7 @@ import { EXERCISES, getDefaultWeight } from '../data/exercises'
 import { PPL_BEGINNER } from '../data/programs/ppl-beginner'
 import { WARMUP, COOLDOWN } from '../data/warmup'
 import { autoBackup } from '../db/backup'
-import { getSmartWeight } from '../engine/progression'
+import { getSmartWeight, adjustWeightByRpe } from '../engine/progression'
 import type { RPE } from '../types/workout'
 import { RPE_CONFIG } from '../types/workout'
 
@@ -248,12 +248,17 @@ function ExerciseBlock({ exercise, workoutLogId, userWeight, completedSets, onSe
   const [collapsed, setCollapsed] = useState(false)
   const [smartWeight, setSmartWeight] = useState<number | null>(null)
 
-  // Load smart weight once
+  const isUnilateral = exerciseInfo?.isUnilateral ?? false
+  const isDumbbell = exerciseInfo?.equipment === 'dumbbell'
+
   useEffect(() => {
     getSmartWeight(exercise.id, userWeight, workoutLogId).then(setSmartWeight)
   }, [exercise.id, userWeight, workoutLogId])
 
   const shouldShow = !isDone || !collapsed
+
+  // Equipment label
+  const equipLabel = isDumbbell ? '🏋️ гантелі' : exerciseInfo?.equipment === 'cable' ? '🔗 блок' : exerciseInfo?.equipment === 'machine' ? '⚙️ тренажер' : '🏋️ штанга'
 
   return (
     <div className={`bg-[#1C1C1E] rounded-2xl overflow-hidden ${isDone ? 'opacity-60' : ''}`}>
@@ -269,9 +274,16 @@ function ExerciseBlock({ exercise, workoutLogId, userWeight, completedSets, onSe
               {completedSets.length}/{exercise.sets}
             </span>
           )}
-          <span className={`text-sm font-medium ${isDone ? 'text-[#8E8E93]' : 'text-white'}`}>
-            {exercise.name}
-          </span>
+          <div>
+            <span className={`text-sm font-medium ${isDone ? 'text-[#8E8E93]' : 'text-white'}`}>
+              {exercise.name}
+            </span>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className="text-[10px] text-[#636366]">{equipLabel}</span>
+              {isUnilateral && <span className="text-[10px] text-[#FF9F0A]">↔ на кожну руку</span>}
+              {isDumbbell && !isUnilateral && <span className="text-[10px] text-[#636366]">вага = 1 гантель</span>}
+            </div>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           {!isDone && exerciseInfo && <span className="text-[10px] text-[#636366]">💡</span>}
@@ -285,11 +297,28 @@ function ExerciseBlock({ exercise, workoutLogId, userWeight, completedSets, onSe
             <p key={i} className="text-[11px] text-[#8E8E93]">• {t}</p>
           ))}
           <p className="text-[11px] text-[#FF453A] mt-1">⚠ {exerciseInfo.errors}</p>
+          <a
+            href={`https://www.youtube.com/results?search_query=${encodeURIComponent(exerciseInfo.searchQuery)}`}
+            target="_blank" rel="noopener noreferrer"
+            className="inline-block text-[11px] text-[#0A84FF] mt-1"
+          >
+            ▶ Дивитись техніку на YouTube
+          </a>
         </div>
       )}
 
       {shouldShow && (
         <div className="px-4 pb-4 space-y-2">
+          {/* Unilateral reminder */}
+          {isUnilateral && completedSets.length > 0 && completedSets.length < exercise.sets && (
+            <p className="text-[11px] text-[#FF9F0A]">
+              {completedSets.length < Math.ceil(exercise.sets / 2)
+                ? `→ Зараз: одна рука (${completedSets.length}/${Math.ceil(exercise.sets / 2)})`
+                : `→ Міняй руку! (${completedSets.length - Math.ceil(exercise.sets / 2) + 1}/${Math.floor(exercise.sets / 2)})`
+              }
+            </p>
+          )}
+
           {lastWorkoutSets.length > 0 && completedSets.length === 0 && (
             <p className="text-[11px] text-[#636366]">
               Минулого разу: {lastWorkoutSets.map(s => `${s.weightKg}×${s.actualReps}`).join(' / ')}
@@ -315,7 +344,13 @@ function ExerciseBlock({ exercise, workoutLogId, userWeight, completedSets, onSe
 
             if (i > completedSets.length) return null
 
-            const defWeight = prevLogged?.weightKg ?? smartWeight ?? lastTimeSet?.weightKg ?? getDefaultWeight(exercise.id, userWeight)
+            // Within-workout RPE adjustment
+            let defWeight: number
+            if (prevLogged?.weightKg && prevLogged.rpe) {
+              defWeight = adjustWeightByRpe(prevLogged.weightKg, prevLogged.rpe)
+            } else {
+              defWeight = smartWeight ?? lastTimeSet?.weightKg ?? getDefaultWeight(exercise.id, userWeight)
+            }
             const defReps = prevLogged?.actualReps ?? lastTimeSet?.actualReps ?? Math.round((exercise.repsMin + exercise.repsMax) / 2)
 
             return (

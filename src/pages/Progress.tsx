@@ -26,12 +26,19 @@ export function Progress() {
     const w = parseFloat(newWeight)
     if (isNaN(w) || w <= 0) return
     try {
-      await db.bodyWeights.add({ date: todayISO(), weightKg: w })
-    } catch {
-      await db.bodyWeights.where('date').equals(todayISO()).modify({ weightKg: w })
+      // Check if today's entry exists
+      const existing = await db.bodyWeights.where('date').equals(todayISO()).first()
+      if (existing) {
+        await db.bodyWeights.update(existing.id!, { weightKg: w })
+      } else {
+        await db.bodyWeights.add({ date: todayISO(), weightKg: w })
+      }
+      setNewWeight('')
+      setShowWeightInput(false)
+    } catch (err) {
+      console.error('Failed to save weight:', err)
+      alert('Помилка збереження ваги')
     }
-    setNewWeight('')
-    setShowWeightInput(false)
   }
 
   const weightChartData = bodyWeights.map((bw) => ({ date: formatDate(bw.date), kg: bw.weightKg }))

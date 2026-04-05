@@ -14,13 +14,12 @@ function roundTo2_5(value: number): number {
   return Math.round(value / 2.5) * 2.5
 }
 
-/** Get recommended weight for next session based on RPE history */
+/** Get recommended weight based on RPE history (between workouts) */
 export async function getSmartWeight(
   exerciseId: string,
   userWeight: number,
   currentWorkoutId: number,
 ): Promise<number> {
-  // Get all sets for this exercise from PREVIOUS workouts
   const allSets = await db.setLogs
     .where('exerciseId')
     .equals(exerciseId)
@@ -29,7 +28,6 @@ export async function getSmartWeight(
   const prevSets = allSets.filter(s => s.workoutLogId !== currentWorkoutId && s.weightKg && s.rpe)
   if (prevSets.length === 0) return getDefaultWeight(exerciseId, userWeight)
 
-  // Group by workout, get the latest workout
   const byWorkout = new Map<number, SetLog[]>()
   for (const s of prevSets) {
     const arr = byWorkout.get(s.workoutLogId) ?? []
@@ -45,12 +43,22 @@ export async function getSmartWeight(
   const avgRpe = lastWorkoutSets.reduce((sum, s) => sum + (s.rpe ?? 7), 0) / lastWorkoutSets.length
 
   let delta = 0
-  if (avgRpe <= 6) delta = 5        // Легко → +5кг
-  else if (avgRpe <= 7) delta = 2.5  // Норм → +2.5кг
-  else if (avgRpe <= 8) delta = 0    // Важко → та ж
-  else delta = -2.5                   // Макс → -2.5кг
+  if (avgRpe <= 6) delta = 5
+  else if (avgRpe <= 7) delta = 2.5
+  else if (avgRpe <= 8) delta = 0
+  else delta = -2.5
 
   return roundTo2_5(Math.max(0, lastWeight + delta))
+}
+
+/** Adjust weight within same workout based on RPE of previous set */
+export function adjustWeightByRpe(lastSetWeight: number, lastSetRpe: number): number {
+  let delta = 0
+  if (lastSetRpe <= 6) delta = 2.5    // Легко → трохи додай
+  else if (lastSetRpe <= 7) delta = 0  // Норм → залиш
+  else if (lastSetRpe <= 8) delta = 0  // Важко → залиш
+  else delta = -2.5                     // Макс → зменш
+  return roundTo2_5(Math.max(0, lastSetWeight + delta))
 }
 
 /** Check if user needs a deload week */

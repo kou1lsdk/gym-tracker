@@ -24,7 +24,7 @@ export const PPL_BEGINNER: Program = {
       exercises: [
         { id: 'pullups', name: 'Підтягування / Тяга верхнього блоку', muscleGroup: 'back', sets: 3, repsMin: 8, repsMax: 10, restSeconds: 90 },
         { id: 'barbell_row', name: 'Тяга штанги в нахилі', muscleGroup: 'back', sets: 3, repsMin: 8, repsMax: 10, restSeconds: 90 },
-        { id: 'single_arm_row', name: 'Тяга гантелі однією рукою', muscleGroup: 'back', sets: 3, repsMin: 10, repsMax: 12, restSeconds: 60 },
+        { id: 'single_arm_row', name: 'Тяга гантелі однією рукою', muscleGroup: 'back', sets: 6, repsMin: 10, repsMax: 12, restSeconds: 45, notes: '3 на кожну руку' },
         { id: 'face_pulls', name: 'Тяга на обличчя', muscleGroup: 'shoulders', sets: 3, repsMin: 12, repsMax: 15, restSeconds: 60 },
         { id: 'bicep_curls', name: 'Згинання на біцепс', muscleGroup: 'biceps', sets: 3, repsMin: 10, repsMax: 12, restSeconds: 60 },
       ],
