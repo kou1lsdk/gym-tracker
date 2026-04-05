@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { Minus, Plus } from 'lucide-react'
 
 interface Props {
@@ -11,6 +12,11 @@ interface Props {
 }
 
 export function NumberStepper({ value, onChange, step = 1, min = 0, max = 999, label, inputMode = 'numeric' }: Props) {
+  const [text, setText] = useState(String(value))
+
+  // Sync text when value changes from outside (e.g. +/- buttons)
+  useEffect(() => { setText(String(value)) }, [value])
+
   return (
     <div className="flex items-center gap-2">
       {label && <span className="text-xs text-[#636366] w-8">{label}</span>}
@@ -24,11 +30,16 @@ export function NumberStepper({ value, onChange, step = 1, min = 0, max = 999, l
       <input
         type="number"
         inputMode={inputMode}
-        value={value || ''}
+        value={text}
         onChange={(e) => {
+          setText(e.target.value)
           const v = parseFloat(e.target.value)
           if (!isNaN(v) && v >= min && v <= max) onChange(v)
-          if (e.target.value === '') onChange(0)
+        }}
+        onBlur={() => {
+          if (text === '' || isNaN(parseFloat(text))) {
+            setText(String(value))
+          }
         }}
         className="w-14 h-10 rounded-xl bg-[#2C2C2E] text-center text-base font-semibold text-white border border-[#38383A] focus:border-[#636366] focus:outline-none"
       />

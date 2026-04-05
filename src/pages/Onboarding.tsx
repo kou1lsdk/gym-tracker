@@ -123,8 +123,21 @@ function Toggle({ active, onClick, label }: { active: boolean; onClick: () => vo
 }
 
 function NumInput({ value, onChange, mode }: { value: number; onChange: (v: number) => void; mode?: string }) {
+  const [text, setText] = useState(String(value))
   return (
-    <input type="number" inputMode={mode === 'decimal' ? 'decimal' : 'numeric'} value={value} onChange={(e) => onChange(+e.target.value)}
-      className="w-full px-4 py-3 rounded-xl bg-[#1C1C1E] border border-[#38383A] text-white text-sm focus:border-[#636366] focus:outline-none" />
+    <input
+      type="number"
+      inputMode={mode === 'decimal' ? 'decimal' : 'numeric'}
+      value={text}
+      onChange={(e) => {
+        setText(e.target.value)
+        const n = parseFloat(e.target.value)
+        if (!isNaN(n)) onChange(n)
+      }}
+      onBlur={() => {
+        if (text === '' || isNaN(parseFloat(text))) setText(String(value))
+      }}
+      className="w-full px-4 py-3 rounded-xl bg-[#1C1C1E] border border-[#38383A] text-white text-sm focus:border-[#636366] focus:outline-none"
+    />
   )
 }

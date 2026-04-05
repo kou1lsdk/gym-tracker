@@ -36,6 +36,8 @@ export default defineConfig({
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,
+        navigateFallback: '/gym-tracker/index.html',
+        navigateFallbackAllowlist: [/^\/gym-tracker/],
       },
     }),
   ],
