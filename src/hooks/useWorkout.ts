@@ -8,10 +8,12 @@ import type { RPE } from '../types/workout'
 export function useTodayWorkout(trainingDays: number[]) {
   const dayIndex = getTrainingDayIndex(trainingDays)
   const program = PPL_BEGINNER
+
+  // Hook must be called unconditionally (React rules of hooks)
+  const totalWorkouts = useLiveQuery(() => db.workoutLogs.count()) ?? 0
+
   if (dayIndex < 0) return { programDay: null, isTrainingDay: false, program }
 
-  // A/B rotation based on total workouts done (not day of week)
-  const totalWorkouts = useLiveQuery(() => db.workoutLogs.count()) ?? 0
   const programDay = program.days[totalWorkouts % program.days.length]
   return { programDay, isTrainingDay: true, program }
 }
