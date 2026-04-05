@@ -35,14 +35,16 @@ export type MuscleGroup =
   | 'calves'
   | 'core'
 
+// RIR = Reps In Reserve (скільки ще міг зробити)
 export type RPE = 6 | 7 | 8 | 9 | 10
 
+// Stored as RPE internally, displayed as RIR to user
 export const RPE_CONFIG = {
-  6:  { label: 'Легко', emoji: '😊', nextSetDelta: 2.5, nextWorkoutDelta: 5 },
-  7:  { label: 'Норм',  emoji: '💪', nextSetDelta: 0,   nextWorkoutDelta: 2.5 },
-  8:  { label: 'Важко', emoji: '🔥', nextSetDelta: 0,   nextWorkoutDelta: 0 },
-  9:  { label: 'Макс',  emoji: '⚡', nextSetDelta: -2.5, nextWorkoutDelta: 0 },
-  10: { label: 'Макс',  emoji: '⚡', nextSetDelta: -2.5, nextWorkoutDelta: 0 },
+  6:  { label: '4+', desc: 'Ще багато міг', emoji: '😊', nextSetDelta: 2.5, nextWorkoutDelta: 2.5 },
+  7:  { label: '2-3', desc: 'Нормально',   emoji: '💪', nextSetDelta: 0,   nextWorkoutDelta: 0 },
+  8:  { label: '1',   desc: 'На межі',      emoji: '🔥', nextSetDelta: 0,   nextWorkoutDelta: 0 },
+  9:  { label: '0',   desc: 'Відмова',      emoji: '💀', nextSetDelta: -2.5, nextWorkoutDelta: -2.5 },
+  10: { label: '0',   desc: 'Відмова',      emoji: '💀', nextSetDelta: -2.5, nextWorkoutDelta: -2.5 },
 } as const
 
 export interface WorkoutLog {

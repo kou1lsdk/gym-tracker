@@ -9,7 +9,10 @@ export function useTodayWorkout(trainingDays: number[]) {
   const dayIndex = getTrainingDayIndex(trainingDays)
   const program = PPL_BEGINNER
   if (dayIndex < 0) return { programDay: null, isTrainingDay: false, program }
-  const programDay = program.days[dayIndex % program.days.length]
+
+  // A/B rotation based on total workouts done (not day of week)
+  const totalWorkouts = useLiveQuery(() => db.workoutLogs.count()) ?? 0
+  const programDay = program.days[totalWorkouts % program.days.length]
   return { programDay, isTrainingDay: true, program }
 }
 

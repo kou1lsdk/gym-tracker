@@ -21,6 +21,8 @@ import { RPE_CONFIG } from '../types/workout'
 
 type Phase = 'pre' | 'warmup' | 'workout' | 'cooldown' | 'summary'
 
+function roundTo2_5(v: number): number { return Math.round(v / 2.5) * 2.5 }
+
 export function Workout() {
   const navigate = useNavigate()
   const { profile } = useProfile()
@@ -200,8 +202,9 @@ export function Workout() {
         </div>
 
         {/* Exercise blocks */}
-        {activeDay.exercises.map((exercise) => (
+        {activeDay.exercises.map((exercise, exIndex) => (
           <ExerciseBlock
+            isFirst={exIndex === 0}
             key={exercise.id}
             exercise={exercise}
             workoutLogId={activeWorkout.workoutLogId!}
@@ -234,10 +237,11 @@ export function Workout() {
 // ═══════════════════════════════════
 // Exercise Block
 // ═══════════════════════════════════
-function ExerciseBlock({ exercise, workoutLogId, userWeight, completedSets, onSetComplete }: {
+function ExerciseBlock({ exercise, workoutLogId, userWeight, isFirst, completedSets, onSetComplete }: {
   exercise: { id: string; name: string; sets: number; repsMin: number; repsMax: number; restSeconds: number }
   workoutLogId: number
   userWeight: number
+  isFirst?: boolean
   completedSets: Array<{ setNumber: number; weightKg?: number; actualReps?: number; rpe?: number }>
   onSetComplete: (weight: number, reps: number, rpe: RPE) => Promise<void>
 }) {
@@ -319,6 +323,17 @@ function ExerciseBlock({ exercise, workoutLogId, userWeight, completedSets, onSe
             </p>
           )}
 
+          {/* Warmup sets for first compound exercise */}
+          {isFirst && completedSets.length === 0 && smartWeight && (
+            <div className="space-y-1 mb-2">
+              <p className="text-[11px] text-[#FF9F0A] font-medium">Розминка перед робочими:</p>
+              <p className="text-[11px] text-[#636366]">1. Порожній гриф (20кг) × 10</p>
+              <p className="text-[11px] text-[#636366]">2. {roundTo2_5(smartWeight * 0.5)}кг × 5</p>
+              <p className="text-[11px] text-[#636366]">3. {roundTo2_5(smartWeight * 0.75)}кг × 3</p>
+              <p className="text-[11px] text-[#8E8E93]">→ Потім робочі підходи ({smartWeight}кг)</p>
+            </div>
+          )}
+
           {lastWorkoutSets.length > 0 && completedSets.length === 0 && (
             <p className="text-[11px] text-[#636366]">
               Минулого разу: {lastWorkoutSets.map(s => `${s.weightKg}×${s.actualReps}`).join(' / ')}
@@ -378,18 +393,23 @@ function ActiveSetRow({ setNumber, defaultWeight, defaultReps, targetReps, onCom
 
   if (showRpe) {
     return (
-      <div className="bg-[#2C2C2E] rounded-xl p-3 space-y-2">
-        <p className="text-xs text-[#8E8E93] text-center">Як відчувалось? ({weight}кг × {reps})</p>
+      <div className="bg-[#2C2C2E] rounded-xl p-4 space-y-3">
+        <p className="text-sm text-white text-center font-medium">Скільки ще повторів міг зробити?</p>
+        <p className="text-xs text-[#636366] text-center">{weight}кг × {reps}</p>
         <div className="grid grid-cols-4 gap-2">
-          {([6, 7, 8, 9] as RPE[]).map((rpe) => (
-            <button key={rpe} onClick={() => {
-              try { navigator.vibrate?.(50) } catch {}
-              onComplete(weight, reps, rpe)
-            }} className="flex flex-col items-center gap-0.5 py-2.5 rounded-xl bg-[#38383A] active:bg-[#48484A]">
-              <span className="text-lg">{RPE_CONFIG[rpe].emoji}</span>
-              <span className="text-[9px] text-[#8E8E93]">{RPE_CONFIG[rpe].label}</span>
-            </button>
-          ))}
+          {([6, 7, 8, 9] as RPE[]).map((rpe) => {
+            const cfg = RPE_CONFIG[rpe]
+            return (
+              <button key={rpe} onClick={() => {
+                try { navigator.vibrate?.(50) } catch {}
+                onComplete(weight, reps, rpe)
+              }} className="flex flex-col items-center gap-1 py-3 rounded-xl bg-[#38383A] active:bg-[#48484A]">
+                <span className="text-lg">{cfg.emoji}</span>
+                <span className="text-sm font-bold text-white">{cfg.label}</span>
+                <span className="text-[9px] text-[#636366]">{cfg.desc}</span>
+              </button>
+            )
+          })}
         </div>
       </div>
     )

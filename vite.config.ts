@@ -5,6 +5,10 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
   base: '/gym-tracker/',
+  define: {
+    __BUILD_DATE__: JSON.stringify(new Date().toISOString()),
+    __APP_VERSION__: JSON.stringify('2.1'),
+  },
   plugins: [
     react(),
     tailwindcss(),

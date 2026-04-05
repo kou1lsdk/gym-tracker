@@ -42,23 +42,21 @@ export async function getSmartWeight(
   const lastWeight = lastWorkoutSets[0].weightKg ?? 0
   const avgRpe = lastWorkoutSets.reduce((sum, s) => sum + (s.rpe ?? 7), 0) / lastWorkoutSets.length
 
+  // Conservative progression: max +2.5kg per session
   let delta = 0
-  if (avgRpe <= 6) delta = 5
-  else if (avgRpe <= 7) delta = 2.5
-  else if (avgRpe <= 8) delta = 0
-  else delta = -2.5
+  if (avgRpe <= 6) delta = 2.5       // RIR 4+ (too easy) → +2.5
+  else if (avgRpe <= 7) delta = 0    // RIR 2-3 (ideal) → stay
+  else if (avgRpe <= 8) delta = 0    // RIR 1 (hard) → stay
+  else delta = -2.5                   // RIR 0 (failure) → -2.5
 
   return roundTo2_5(Math.max(0, lastWeight + delta))
 }
 
-/** Adjust weight within same workout based on RPE of previous set */
+/** Adjust weight within same workout based on RIR of previous set */
 export function adjustWeightByRpe(lastSetWeight: number, lastSetRpe: number): number {
-  let delta = 0
-  if (lastSetRpe <= 6) delta = 2.5    // Легко → трохи додай
-  else if (lastSetRpe <= 7) delta = 0  // Норм → залиш
-  else if (lastSetRpe <= 8) delta = 0  // Важко → залиш
-  else delta = -2.5                     // Макс → зменш
-  return roundTo2_5(Math.max(0, lastSetWeight + delta))
+  // Within same workout: only reduce if failure, never increase
+  if (lastSetRpe >= 9) return roundTo2_5(Math.max(0, lastSetWeight - 2.5))
+  return lastSetWeight // keep same weight within workout
 }
 
 /** Check if user needs a deload week */

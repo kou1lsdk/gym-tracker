@@ -105,9 +105,17 @@ export function Settings() {
           <input ref={fileInputRef} type="file" accept=".json" onChange={handleImport} className="hidden" />
         </div>
 
-        <div className="flex items-center gap-2 px-4 py-3 text-[#636366]">
-          <Info size={14} />
-          <span className="text-xs">v2.0 • Дані зберігаються локально + авто-бекап</span>
+        <div className="bg-[#1C1C1E] rounded-2xl p-4 space-y-2">
+          <div className="flex items-center gap-2 text-[#636366]">
+            <Info size={14} />
+            <span className="text-xs">Про додаток</span>
+          </div>
+          <div className="text-xs text-[#636366] space-y-1">
+            <p>Версія: {(globalThis as any).__APP_VERSION__ ?? '2.1'}</p>
+            <p>Оновлено: {new Date((globalThis as any).__BUILD_DATE__ ?? Date.now()).toLocaleDateString('uk-UA', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+            <p>Програма: Full Body A/B (ротація)</p>
+            <p>Дані зберігаються локально + авто-бекап</p>
+          </div>
         </div>
       </div>
     </PageWrapper>
